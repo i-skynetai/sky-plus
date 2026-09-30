@@ -1,0 +1,2 @@
+# Runs with no installs and no keys. Every provider is an in-memory fake.
+profile: local

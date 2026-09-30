@@ -1,0 +1,8 @@
+# The intended default stack. Each provider is a pip extra; `skynet doctor` names the missing ones.
+profile: development
+model:
+  provider: litellm
+  model: ${SKYNET_MODEL:gpt-4o-mini}
+decision:
+  provider: praxis
+  threshold: 0.7
