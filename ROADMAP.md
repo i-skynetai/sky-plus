@@ -69,9 +69,9 @@ accepted.
 
 | ID | Feature | Area | P | Size | Status | Owner |
 |---|---|---|---|---|---|---|
-| SP-020 | [How adapters ship](#sp-020) | packaging | P1 | S | Needs decision | |
+| SP-020 | [How adapters ship](#sp-020) | packaging | P1 | S | Done (0.2.0, unreleased) | arupmmi07 |
 | SP-021 | [LiteLLM model provider](#sp-021) | providers | P1 | M | Ready | |
-| SP-022 | [LangGraph agent runtime](#sp-022) | providers | P1 | L | Ready | |
+| SP-022 | [LangGraph agent runtime](#sp-022) | providers | P1 | L | Done (0.2.0, unreleased) | arupmmi07 |
 | SP-023 | [Tool schemas from type hints](#sp-023) | sdk | P1 | S | Ready | |
 | SP-024 | [Providers stay up between runs](#sp-024) | sdk | P1 | M | Needs decision | |
 | SP-025 | [Resume a run after human approval](#sp-025) | runtime | P1 | L | Needs decision | |
@@ -234,7 +234,12 @@ package advertises a plug-in) — see
 needed:* adapters inside `skynet_plus/providers/`, imported only when their extra is
 installed, or separate `skynet-provider-*` packages. The choice sets where the LangGraph
 and LiteLLM code lives, how it is versioned, and what doctor's hint says. It blocks
-SP-021, SP-022 and SP-030 to SP-034.
+SP-021, SP-022 and SP-030 to SP-034. *Decided 2026-09-30:* adapters live inside
+`skynet_plus/providers/`, one module each, imported by the registry only when their
+extra is installed, so one version number covers the kernel and its adapters and a
+missing library is a `MISSING` row rather than an import error. Entry points stay for
+providers shipped by other packages (SP-041). Separate `skynet-provider-*` packages
+can come later if an adapter's release cadence diverges.
 
 <a id="sp-021"></a>**SP-021 — LiteLLM model provider.** The only model provider is the
 in-memory fake. *Done when:* `model: {provider: litellm, model: …}` passes `doctor` with
@@ -248,8 +253,11 @@ runtime; only the fake runtime exists. *Done when:* `examples/hello_agent.py` ru
 `agent-runtime: langgraph` with no change to its code and no LangGraph import in it;
 the run record shows the same governed steps as the fake — input guardrail, recall,
 proposed action, tool guardrail, authorization, tool, model, output guardrail, remember;
-the manifest declares only the features the adapter implements. *Depends on:* SP-020,
-SP-021. An L: write a design note first.
+the manifest declares only the features the adapter implements. *Depends on:* SP-020. Not on
+SP-021: the runtime reaches the model through the Skynet+ port, so it runs on any
+model provider. Design note: [docs/features/SP-022-langgraph-runtime.md](docs/features/SP-022-langgraph-runtime.md).
+*Done 2026-09-30:* a fixed graph (guard → recall → plan → govern → act → finish) with an
+in-memory checkpoint per run; `tests/test_langgraph.py`.
 
 <a id="sp-023"></a>**SP-023 — Tool schemas from type hints.** A tool's parameters are
 kept as bare type names. In a module that uses `from __future__ import annotations` —

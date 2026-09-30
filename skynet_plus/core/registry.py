@@ -13,6 +13,7 @@ class Registry:
     def __init__(self) -> None:
         self._classes: dict[tuple[str, str], type[Provider]] = {}
         self.load_errors: list[str] = []
+        self.skipped: dict[str, str] = {}      # built-in adapters whose library is absent
 
     def register(self, cls: type[Provider]) -> type[Provider]:
         m = cls.manifest
@@ -52,9 +53,11 @@ class Registry:
 
 
 def default_registry() -> Registry:
-    from ..providers import fake, rules
+    from ..providers import fake, optional_providers, rules
     reg = Registry()
     reg.register_all(fake.ALL)
     reg.register(rules.RulesGuardrail)
+    loaded, reg.skipped = optional_providers()
+    reg.register_all(loaded)
     reg.discover()
     return reg

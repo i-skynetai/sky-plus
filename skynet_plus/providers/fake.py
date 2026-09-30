@@ -64,6 +64,22 @@ class FakeModel(ModelProvider):
         text = " | ".join(parts)
         in_tokens = sum(len(str(m.get("content", ""))) for m in messages) // 4
         usage = {"input_tokens": in_tokens, "output_tokens": len(text) // 4, "cost_usd": 0.0}
+        if schema and "action" in (schema.get("properties") or {}):
+            # A planner asked for a proposal: use the tool named in the task once, then finish.
+            tools: list[dict] = []
+            for m in messages:
+                if m.get("role") == "system" and "available_tools" in str(m.get("content", "")):
+                    try:
+                        tools = json.loads(m["content"]).get("available_tools", [])
+                    except (json.JSONDecodeError, AttributeError):
+                        tools = []
+            task = str(user[-1]) if user else ""
+            if tools and not tool_results:
+                name = next((t["name"] for t in tools if t["name"].lower() in task.lower()), tools[0]["name"])
+                structured: dict = {"action": "tool", "tool": name, "args": {"input": task}}
+            else:
+                structured = {"action": "final", "answer": text}
+            return ModelResponse(text=json.dumps(structured), model="fake-1", usage=usage, structured=structured)
         structured = {"answer": text} if schema else None
         return ModelResponse(text=text, model="fake-1", usage=usage, structured=structured)
 

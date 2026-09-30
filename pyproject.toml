@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skynet-plus"
-version = "0.1.0"
+version = "0.2.0"
 description = "Build agents, not agent infrastructure. A lite, provider-pluggable SDK: you write the agent, configuration picks the runtime, model, memory, decision, guardrails, evaluation and telemetry underneath."
 readme = "README.md"
 requires-python = ">=3.11"

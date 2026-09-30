@@ -38,7 +38,8 @@ harness for coding agents, and not a tool that Claude Code or Codex call. Not a 
 
 ## Status
 
-**0.1.0, the kernel.** Working and tested with the standard library only:
+**0.2.0, unreleased.** The kernel plus the first real runtime. Tested with the standard
+library only, and with LangGraph when its extra is installed:
 
 - portable contracts: `Agent`, `Task`, `Tool`, `State`, `Result`;
 - provider manifests with declared features, version ranges and dependencies;
@@ -50,11 +51,14 @@ harness for coding agents, and not a tool that Claude Code or Codex call. Not a 
 - an append-only run record the model cannot write to;
 - in-memory fake providers for every capability the local profile uses, so a fresh clone
   runs `python examples/hello_agent.py` with no installs and no keys;
-- the `skynet` CLI: `init`, `doctor`, `providers`, `run`, `inspect`, `swap`.
+- the `skynet` CLI: `init`, `doctor`, `providers`, `run`, `inspect`, `swap`;
+- **the LangGraph agent runtime** (`pip install "skynet-plus[langgraph]"`): a fixed,
+  governed graph — guard, recall, plan, govern, act, finish — checkpointed per run. The
+  example runs on it with no change to its code and no LangGraph import.
 
-Real adapters (LangGraph, LiteLLM, Mem0, Praxis, OpenTelemetry, DeepEval) are the next
-milestones; each ships as a pip extra and `skynet doctor` already names the one you are
-missing.
+The remaining adapters (LiteLLM, Mem0, Praxis, OpenTelemetry, DeepEval) are the next
+milestones on the [roadmap](ROADMAP.md); each ships as a pip extra and `skynet doctor`
+already names the one you are missing.
 
 ## Install
 
@@ -71,7 +75,7 @@ pip install -e .                        # then: skynet init && skynet doctor
 skynet_plus/
   core/        contracts · provider · registry · resolver · profiles · config · runrecord · kernel
   spi/         one abstract class per capability (twelve)
-  providers/   in-memory fakes; real adapters are extras
+  providers/   in-memory fakes, the rules guardrail, the LangGraph runtime; real adapters are extras
   sdk/         Agent
   cli.py       skynet
 recipes/       local · development · production

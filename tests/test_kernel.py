@@ -61,8 +61,9 @@ class DoctorReports(unittest.TestCase):
         report = asyncio.run(Kernel.load(None, profile="development").doctor())
         self.assertFalse(report.ok)
         missing = {r.capability: r for r in report.rows if r.status == "MISSING"}
-        self.assertIn("agent-runtime", missing)
-        self.assertIn('skynet-plus[langgraph]', missing["agent-runtime"].detail)
+        # the model row is missing on every interpreter in CI: no LiteLLM adapter exists yet
+        self.assertIn("model", missing)
+        self.assertIn('skynet-plus[litellm]', missing["model"].detail)
         self.assertIn("NOT READY", report.render())
 
     def test_doctor_never_raises_on_a_broken_provider(self):
