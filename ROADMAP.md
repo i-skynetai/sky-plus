@@ -12,6 +12,15 @@ providers. `skynet doctor` checks the configured providers before the first call
 coding agents and not a tool that Claude Code or Codex call, so that kind of work is not
 on this list.
 
+## Where we are — read this first
+
+**The base product is being finished by the maintainer; the roadmap is published with
+it.** Until 1.0 the rows in the *1.0 — the base product* section are taken: they are
+what any agentic team needs on day one, and they ship together, tested, before anything
+is open for claiming. The sections after it are the roadmap that goes public with 1.0.
+Every finding below was verified against the code on 2026-09-30, each with a reproduction;
+the ones marked fixed carry the version.
+
 ## Status
 
 | Status | Means | Who moves it on |
@@ -21,6 +30,7 @@ on this list.
 | **Ready** | scope and acceptance agreed; anyone may pick it | you, when you claim it |
 | **In progress** | claimed — the row names the owner and the date | the owner, when the pull request opens |
 | **In review** | a pull request is open | a maintainer, when it merges |
+| **Planned (1.0)** | part of the base product; the maintainer does it before publication; not open for claiming | the maintainer |
 | **Done** | merged; the row names the version | — |
 
 Priority: **P0** a correctness bug, fix first · **P1** the next release · **P2** planned ·
@@ -50,65 +60,50 @@ accepted.
 
 ## Features
 
-### 0.1.1 — correctness
+### 1.0 — the base product (maintainer; not open for claiming until 1.0 ships)
+
+The definition of the base: a project can `skynet init`, pass `skynet doctor` on the
+development profile with its extras installed, run the reference agent on a real model
+through LangGraph with memory, guardrails, evaluation and telemetry, and read an audit
+record it can trust. Nothing provider-specific in the application's code.
 
 | ID | Feature | Area | P | Size | Status | Owner |
 |---|---|---|---|---|---|---|
-| SP-001 | [Event lines cannot pose as runs](#sp-001) | run record | P0 | S | Ready | |
-| SP-002 | [A tamper-evident run record](#sp-002) | run record | P0 | M | Needs decision | |
-| SP-003 | [One-line `{key: value}` maps in `skynet.yaml`](#sp-003) | config | P0 | M | Ready | |
-| SP-004 | [Requirements checked the same way everywhere](#sp-004) | kernel | P0 | M | Ready | |
-| SP-005 | [Config mistakes are config errors](#sp-005) — *good first issue* | config | P0 | S | Ready | |
-| SP-006 | [`skynet swap` keeps the rest of the file](#sp-006) | cli | P0 | M | Ready | |
-| SP-007 | [Guardrails see nested content, and `modify` sticks](#sp-007) | guardrail | P0 | M | Ready | |
-| SP-008 | [Evaluation gets the whole run record](#sp-008) | sdk | P0 | S | Ready | |
-| SP-009 | [The run log sits next to the config file](#sp-009) | run record | P0 | S | Ready | |
-| SP-010 | [Install hints that are true](#sp-010) — *good first issue* | doctor | P0 | S | Ready | |
+| SP-020 | [How adapters ship](#sp-020) | packaging | P1 | S | Done (0.2.0) | maintainer |
+| SP-022 | [LangGraph agent runtime](#sp-022) | providers | P1 | L | Done (0.2.0) | maintainer |
+| SP-001 | [Event lines cannot pose as runs](#sp-001) | run record | P0 | S | Planned (1.0) | maintainer |
+| SP-002 | [A tamper-evident run record](#sp-002) | run record | P0 | M | Planned (1.0) — decided: hash chain | maintainer |
+| SP-003 | [One-line `{key: value}` maps in `skynet.yaml`](#sp-003) | config | P0 | M | Planned (1.0) | maintainer |
+| SP-004 | [Requirements checked the same way everywhere](#sp-004) | kernel | P0 | M | Planned (1.0) | maintainer |
+| SP-005 | [Config mistakes are config errors](#sp-005) | config | P0 | S | Planned (1.0) | maintainer |
+| SP-006 | [`skynet swap` keeps the rest of the file](#sp-006) | cli | P0 | M | Planned (1.0) | maintainer |
+| SP-007 | [Guardrails see nested content, and `modify` sticks](#sp-007) | guardrail | P0 | M | Planned (1.0) | maintainer |
+| SP-008 | [Evaluation gets the whole run record](#sp-008) | sdk | P0 | S | Planned (1.0) | maintainer |
+| SP-009 | [The run log sits next to the config file](#sp-009) | run record | P0 | S | Planned (1.0) | maintainer |
+| SP-010 | [Install hints that are true](#sp-010) | doctor | P0 | S | Planned (1.0) | maintainer |
+| SP-023 | [Tool schemas from type hints](#sp-023) | sdk | P1 | S | Planned (1.0) | maintainer |
+| SP-024 | [Providers stay up between runs](#sp-024) | sdk | P1 | M | Planned (1.0) — decided: kept up until `close()` | maintainer |
+| SP-021 | [LiteLLM model provider](#sp-021) | providers | P1 | M | Planned (1.0) | maintainer |
+| SP-030 | [Mem0 memory provider](#sp-030) | providers | P1 | M | Planned (1.0) | maintainer |
+| SP-033 | [OpenTelemetry spans for every provider call](#sp-033) | telemetry | P1 | M | Planned (1.0) | maintainer |
+| SP-034 | [DeepEval provider and `skynet eval`](#sp-034) | evaluation | P1 | M | Planned (1.0) | maintainer |
+| SP-040 | [Conformance suite](#sp-040) | conformance | P1 | L | Planned (1.0) — the shared contract tests the adapters above run | maintainer |
+| SP-041 | [Providers from other packages](#sp-041) | registry | P2 | M | Planned (1.0) | maintainer |
+| SP-060 | [The architecture pack as Markdown](#sp-060) | docs | P2 | S | Planned (1.0) | maintainer |
+| SP-061 | [Tests that leave no trace](#sp-061) | tests | P2 | S | Planned (1.0) | maintainer |
+| SP-062 | [Licence, contributing guide and a repository](#sp-062) | project | P1 | S | Planned (1.0) | maintainer |
 
-### 0.2.0 — the first real stack
+### After 1.0 — published with the base, open for claiming then
 
 | ID | Feature | Area | P | Size | Status | Owner |
 |---|---|---|---|---|---|---|
-| SP-020 | [How adapters ship](#sp-020) | packaging | P1 | S | Done (0.2.0, unreleased) | arupmmi07 |
-| SP-021 | [LiteLLM model provider](#sp-021) | providers | P1 | M | Ready | |
-| SP-022 | [LangGraph agent runtime](#sp-022) | providers | P1 | L | Done (0.2.0, unreleased) | arupmmi07 |
-| SP-023 | [Tool schemas from type hints](#sp-023) | sdk | P1 | S | Ready | |
-| SP-024 | [Providers stay up between runs](#sp-024) | sdk | P1 | M | Needs decision | |
 | SP-025 | [Resume a run after human approval](#sp-025) | runtime | P1 | L | Needs decision | |
-
-### 0.3.0 — the development profile, end to end
-
-| ID | Feature | Area | P | Size | Status | Owner |
-|---|---|---|---|---|---|---|
-| SP-030 | [Mem0 memory provider](#sp-030) | providers | P1 | M | Ready | |
-| SP-031 | [Praxis decision provider](#sp-031) | providers | P1 | M | Needs decision | |
+| SP-031 | [Praxis decision provider](#sp-031) | providers | P1 | M | Needs decision — waits for the Praxis redesign | |
 | SP-032 | [System-1 / System-2 routing](#sp-032) | runtime | P1 | L | Needs decision | |
-| SP-033 | [OpenTelemetry spans for every provider call](#sp-033) | telemetry | P1 | M | Ready | |
-| SP-034 | [DeepEval provider and `skynet eval`](#sp-034) | evaluation | P1 | M | Ready | |
-
-### 0.4.0 — trust
-
-| ID | Feature | Area | P | Size | Status | Owner |
-|---|---|---|---|---|---|---|
-| SP-040 | [Conformance suite](#sp-040) | conformance | P1 | L | Ready | |
-| SP-041 | [Providers from other packages](#sp-041) | registry | P2 | M | Ready | |
 | SP-042 | [Redaction in the run record](#sp-042) | run record | P2 | M | Needs decision | |
-
-### 0.5.0 — reach
-
-| ID | Feature | Area | P | Size | Status | Owner |
-|---|---|---|---|---|---|---|
 | SP-050 | [The production profile's providers](#sp-050) | providers | P2 | L | Ready | |
 | SP-051 | [Streaming](#sp-051) | sdk | P2 | M | Proposed | |
 | SP-052 | [A second agent runtime, swapped by config](#sp-052) | providers | P3 | L | Needs decision | |
-
-### Project and contributors
-
-| ID | Feature | Area | P | Size | Status | Owner |
-|---|---|---|---|---|---|---|
-| SP-060 | [The architecture pack as Markdown](#sp-060) — *good first issue* | docs | P2 | S | Ready | |
-| SP-061 | [Tests that leave no trace](#sp-061) — *good first issue* | tests | P2 | S | Ready | |
-| SP-062 | [Licence, contributing guide and a repository](#sp-062) | project | P1 | S | Needs decision | |
 
 ## Details
 
