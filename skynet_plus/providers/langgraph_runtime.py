@@ -12,6 +12,7 @@ from __future__ import annotations
 import inspect
 import json
 import re
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from importlib import metadata
 from typing import Any, TypedDict
@@ -241,10 +242,13 @@ class LangGraphRuntime(AgentRuntimeProvider):
         tool = ctx.spec.tool(proposal["tool"])
         args = dict(proposal.get("args") or {})
         args.setdefault("input", ctx.task.text)
+        telemetry = ctx.services.get("telemetry")
+        span = telemetry.span(f"tool.{tool.name}", {"tool": tool.name}) if telemetry else nullcontext()
         try:
-            result = tool.invoke(task=ctx.task, **args)
-            if inspect.isawaitable(result):
-                result = await result
+            with span:
+                result = tool.invoke(task=ctx.task, **args)
+                if inspect.isawaitable(result):
+                    result = await result
         except Exception as exc:  # noqa: BLE001 — a tool failure is a result, not a crash
             ctx.step("tool.failed", tool=tool.name, error=f"{type(exc).__name__}: {exc}")
             return {"status": "error", "error": f"tool {tool.name} failed: {exc}"}

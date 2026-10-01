@@ -25,8 +25,8 @@ class TheCli(unittest.TestCase):
                 code, out = run("eval"); self.assertEqual(code, 0, out); self.assertIn('"completed": 1.0', out)
                 Path("skynet.yaml").write_text(Path("skynet.yaml").read_text().replace(
                     "decision:\n  provider: fake", "decision: {provider: fake, threshold: 0.9}   # keep"))
-                code, out = run("swap", "model", "litellm"); self.assertEqual(code, 1); self.assertIn("refused", out)
-                code, out = run("swap", "model", "litellm", "--force"); self.assertEqual(code, 0)
+                code, out = run("swap", "model", "no-such-model"); self.assertEqual(code, 1); self.assertIn("refused", out)
+                code, out = run("swap", "model", "no-such-model", "--force"); self.assertEqual(code, 0)
                 text = Path("skynet.yaml").read_text()
                 self.assertIn("# Skynet+ configuration", text)                       # comments kept
                 self.assertIn("threshold: 0.9", text)                                # other keys kept

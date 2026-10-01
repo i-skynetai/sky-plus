@@ -18,6 +18,8 @@ mem0 = ["mem0ai>=0.1"]
 praxis = ["praxis"]
 otel = ["opentelemetry-api>=1.25", "opentelemetry-sdk>=1.25"]
 deepeval = ["deepeval>=1.0"]
+development = ["langgraph>=0.2", "litellm>=1.40", "mem0ai>=0.1", "opentelemetry-api>=1.25",
+               "opentelemetry-sdk>=1.25", "deepeval>=1.0"]
 dev = ["pytest>=8", "mypy>=1.10"]
 
 [project.scripts]

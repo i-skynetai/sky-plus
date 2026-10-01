@@ -68,12 +68,12 @@ class DoctorReports(unittest.TestCase):
         self.assertEqual(by["payment"].status, "UNCONFIGURED")
         self.assertIn("verdict: OK", report.render())
 
-    def test_development_without_extras_lists_the_missing_providers(self):
-        report = asyncio.run(Kernel.load(None, profile="development").doctor())
+    def test_a_missing_provider_row_names_the_fix(self):
+        report = asyncio.run(Kernel.load(None, profile="production", overrides={"model": "no-such-model"}).doctor())
         self.assertFalse(report.ok)
         missing = {r.capability: r for r in report.rows if r.status == "MISSING"}
-        self.assertIn("model", missing)
-        self.assertIn('skynet-plus[litellm]', missing["model"].detail)
+        self.assertIn("no provider 'no-such-model'", missing["model"].detail)
+        self.assertIn("SP-050", missing["memory"].detail)            # planned, not an install command
         self.assertIn("NOT READY", report.render())
 
     def test_doctor_agrees_with_start(self):

@@ -16,6 +16,37 @@ from .resolver import Resolution, resolve
 from .runrecord import Recorder, new_record
 
 
+TRACED_METHODS = frozenset({"complete", "remember", "recall", "forget", "decide", "check", "evaluate",
+                            "authorize", "start", "signal", "status", "search", "find_symbols",
+                            "read_source", "pay", "run"})
+
+
+class Traced:
+    """A provider whose port methods run inside a telemetry span. Everything else passes through."""
+
+    def __init__(self, provider: Provider, telemetry: Any, capability: str) -> None:
+        self._provider, self._telemetry, self._capability = provider, telemetry, capability
+
+    def __getattr__(self, name: str) -> Any:
+        attr = getattr(self._provider, name)
+        if name in TRACED_METHODS and callable(attr):
+            manifest = self._provider.manifest
+
+            async def traced(*args: Any, **kwargs: Any) -> Any:
+                with self._telemetry.span(f"{self._capability}.{name}",
+                                          {"provider": manifest.id, "version": manifest.version}):
+                    return await attr(*args, **kwargs)
+            return traced
+        return attr
+
+    @property
+    def manifest(self):
+        return self._provider.manifest
+
+    def __repr__(self) -> str:
+        return f"<Traced {self._provider!r}>"
+
+
 class Services:
     """The initialised providers, by capability. `services.model`, `services.get("memory")`."""
 
@@ -145,6 +176,9 @@ class Kernel:
                 except Exception:  # noqa: BLE001
                     pass
             raise
+        telemetry = providers.get("telemetry")
+        if telemetry is not None:
+            providers = {cap: (p if cap == "telemetry" else Traced(p, telemetry, cap)) for cap, p in providers.items()}
         self.services = Services(providers)
         self._started = True
         self.events.emit("kernel.started", providers=self.services.refs())
@@ -153,7 +187,7 @@ class Kernel:
     async def stop(self) -> None:
         for _, p in reversed(list(self.services)):
             try:
-                await p.close()
+                await (p._provider.close() if isinstance(p, Traced) else p.close())
             except Exception:  # noqa: BLE001
                 pass
         self.services = Services({})

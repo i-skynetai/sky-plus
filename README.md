@@ -55,22 +55,37 @@ library only, and with LangGraph when its extra is installed:
   runs `python examples/hello_agent.py` with no installs and no keys;
 - the `skynet` CLI: `init`, `doctor`, `providers`, `run`, `inspect`, `eval`, `swap`;
 - conformance checks every provider of a capability must pass (`skynet_plus.conformance`);
-- **the LangGraph agent runtime** (`pip install "skynet-plus[langgraph]"`): a fixed,
-  governed graph — guard, recall, plan, govern, act, finish — checkpointed per run. The
-  example runs on it with no change to its code and no LangGraph import.
+- **the development stack**, each adapter a pip extra, all five with
+  `pip install "skynet-plus[development]"`:
+  - `langgraph` — the agent runtime: a fixed, governed graph (guard, recall, plan,
+    govern, act, finish), checkpointed per run; the example runs on it unchanged;
+  - `litellm` — the model: any provider LiteLLM reaches, structured output and tool
+    calls mapped to the portable response;
+  - `mem0` — memory, scoped per agent, user and run;
+  - `otel` — OpenTelemetry: one span per run and a child span per provider and tool call;
+  - `deepeval` — evaluation over the canonical run record, with `skynet eval`.
 
-The remaining adapters (LiteLLM, Mem0, Praxis, OpenTelemetry, DeepEval) are the next
-milestones on the [roadmap](ROADMAP.md); each ships as a pip extra and `skynet doctor`
-already names the one you are missing.
+`skynet doctor --profile development` says exactly what is missing: without a model key
+it reports two `DEGRADED` rows naming `OPENAI_API_KEY`; with one, every row is `OK`.
+The decision capability (System-1 routing through Praxis) is after 1.0 on the
+[roadmap](ROADMAP.md); the local profile keeps a fake for it.
 
 ## Install
 
 ```bash
 git clone <this repo> && cd skynet-plus
-python examples/hello_agent.py          # no install needed
-python -m unittest discover -s tests    # the suite
-pip install -e .                        # then: skynet init && skynet doctor
+python examples/hello_agent.py                  # no install needed, no keys
+python -m unittest discover -s tests            # the suite
+pip install -e ".[development]"                 # the real stack
+skynet init --profile development && skynet doctor
+export OPENAI_API_KEY=...                       # or point `model:` at any provider LiteLLM reaches
+skynet run "Where is order 4412?" && skynet inspect && skynet eval
 ```
+
+Three environment variables the loader honours: `SKYNET_CONFIG` (a config path),
+`SKYNET_CONFIG_SEARCH=0` (do not look in parent folders), `SKYNET_RUN_LOG` (the run log
+when the file sets none). Two the adapters set unless you did: `LITELLM_LOCAL_MODEL_COST_MAP`
+and `MEM0_TELEMETRY`/`DEEPEVAL_TELEMETRY_OPT_OUT`, so nothing phones home.
 
 ## Layout
 
@@ -78,7 +93,7 @@ pip install -e .                        # then: skynet init && skynet doctor
 skynet_plus/
   core/        contracts · provider · registry · resolver · profiles · config · runrecord · kernel
   spi/         one abstract class per capability (twelve)
-  providers/   in-memory fakes, the rules guardrail, the LangGraph runtime; real adapters are extras
+  providers/   fakes, the rules guardrail, and the langgraph · litellm · mem0 · otel · deepeval adapters
   sdk/         Agent
   cli.py       skynet
 recipes/       local · development · production

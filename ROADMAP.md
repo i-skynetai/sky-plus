@@ -83,10 +83,10 @@ record it can trust. Nothing provider-specific in the application's code.
 | SP-010 | [Install hints that are true](#sp-010) | doctor | P0 | S | Done (0.2.0) | maintainer |
 | SP-023 | [Tool schemas from type hints](#sp-023) | sdk | P1 | S | Done (0.2.0) | maintainer |
 | SP-024 | [Providers stay up between runs](#sp-024) | sdk | P1 | M | Done (0.2.0) | maintainer |
-| SP-021 | [LiteLLM model provider](#sp-021) | providers | P1 | M | Planned (1.0) | maintainer |
-| SP-030 | [Mem0 memory provider](#sp-030) | providers | P1 | M | Planned (1.0) | maintainer |
-| SP-033 | [OpenTelemetry spans for every provider call](#sp-033) | telemetry | P1 | M | Planned (1.0) | maintainer |
-| SP-034 | [DeepEval provider and `skynet eval`](#sp-034) | evaluation | P1 | M | Planned (1.0) | maintainer |
+| SP-021 | [LiteLLM model provider](#sp-021) | providers | P1 | M | Done (0.2.0) | maintainer |
+| SP-030 | [Mem0 memory provider](#sp-030) | providers | P1 | M | Done (0.2.0) | maintainer |
+| SP-033 | [OpenTelemetry spans for every provider call](#sp-033) | telemetry | P1 | M | Done (0.2.0) | maintainer |
+| SP-034 | [DeepEval provider and `skynet eval`](#sp-034) | evaluation | P1 | M | Done (0.2.0) | maintainer |
 | SP-040 | [Conformance suite](#sp-040) | conformance | P1 | L | Done (0.2.0) | maintainer |
 | SP-041 | [Providers from other packages](#sp-041) | registry | P2 | M | Done (0.2.0) | maintainer |
 | SP-060 | [The architecture pack as Markdown](#sp-060) | docs | P2 | S | Done (0.2.0) | maintainer |

@@ -11,7 +11,7 @@ import json
 import math
 import re
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import Any, Iterator
 
 from ..core.contracts import AgentSpec, Result, Step, Task
@@ -282,10 +282,13 @@ class FakeAgentRuntime(AgentRuntimeProvider):
                 if decision.decision == "deny":
                     return Result(task.id, None, status="denied", steps=steps, served_by=served,
                                   error=decision.reason)
+            telemetry = services.get("telemetry")
+            span = telemetry.span(f"tool.{chosen.name}", {"tool": chosen.name}) if telemetry else nullcontext()
             try:
-                tool_result = chosen.invoke(task=task, **args)
-                if inspect.isawaitable(tool_result):
-                    tool_result = await tool_result
+                with span:
+                    tool_result = chosen.invoke(task=task, **args)
+                    if inspect.isawaitable(tool_result):
+                        tool_result = await tool_result
                 step("tool.executed", tool=chosen.name, result=tool_result)
             except Exception as exc:  # noqa: BLE001
                 step("tool.failed", tool=chosen.name, error=f"{type(exc).__name__}: {exc}")

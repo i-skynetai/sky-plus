@@ -12,6 +12,7 @@ class ModelResponse:
     model: str
     usage: dict = field(default_factory=dict)      # input_tokens, output_tokens, cost_usd
     structured: Any = None                         # parsed object when a schema was requested
+    tool_calls: list[dict] = field(default_factory=list)   # [{"id", "name", "arguments"}]
     raw: Any = None
 
 

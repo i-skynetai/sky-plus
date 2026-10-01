@@ -12,6 +12,10 @@ import importlib
 # module name -> (class name, pip extra)
 OPTIONAL: dict[str, tuple[str, str]] = {
     "langgraph_runtime": ("LangGraphRuntime", "langgraph"),
+    "litellm_model": ("LiteLLMModel", "litellm"),
+    "mem0_memory": ("Mem0Memory", "mem0"),
+    "otel_telemetry": ("OpenTelemetryTelemetry", "otel"),
+    "deepeval_evaluation": ("DeepEvalEvaluation", "deepeval"),
 }
 
 
