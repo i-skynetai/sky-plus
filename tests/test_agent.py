@@ -33,7 +33,7 @@ class AnAgentRunsOnTheLocalProfile(unittest.TestCase):
             for kind in ("action.proposed", "tool.executed", "model.completed"):
                 self.assertIn(kind, kinds)
             self.assertIn("4412", json.dumps(result.to_dict()))
-            self.assertEqual(result.served_by["model"], "fake@0.1.0")
+            self.assertEqual(result.served_by["model"], "fake@1.0.0")
             log = Path(d).resolve() / "runs.jsonl"            # next to the config file
             runs = read_runs(log)
             self.assertEqual(len(runs), 1)

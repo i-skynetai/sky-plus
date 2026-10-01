@@ -177,7 +177,7 @@ class TheOpenTelemetryProvider(unittest.TestCase):
             self.assertIn(expected, names, names)
         model_span = next(s for s in spans if s.name == "model.complete")
         self.assertEqual(model_span.attributes["provider"], "fake")
-        self.assertEqual(model_span.attributes["version"], "0.1.0")
+        self.assertEqual(model_span.attributes["version"], "1.0.0")
         run_span = next(s for s in spans if s.name == "agent.run")
         self.assertTrue(all(s.parent is not None for s in spans if s.name != "agent.run"))
         self.assertTrue(any(e.name == "agent.completed" for e in run_span.events) or

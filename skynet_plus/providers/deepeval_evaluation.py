@@ -18,7 +18,7 @@ from deepeval.test_case import LLMTestCase, ToolCall  # noqa: E402
 from ..core.provider import Health, Manifest  # noqa: E402
 from ..spi import EvalResult, EvaluationProvider  # noqa: E402
 
-VERSION = "0.2.0"
+VERSION = "1.0.0"
 
 
 def _resolve(spec: str | dict) -> tuple[type, dict]:

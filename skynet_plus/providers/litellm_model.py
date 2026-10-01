@@ -19,7 +19,7 @@ from ..core.errors import ProviderError  # noqa: E402
 from ..core.provider import Health, Manifest  # noqa: E402
 from ..spi import ModelProvider, ModelResponse  # noqa: E402
 
-VERSION = "0.2.0"
+VERSION = "1.0.0"
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
 _PASS_THROUGH = ("api_base", "api_key", "api_version", "temperature", "max_tokens", "timeout",
                  "top_p", "seed", "mock_response", "extra_headers", "custom_llm_provider")

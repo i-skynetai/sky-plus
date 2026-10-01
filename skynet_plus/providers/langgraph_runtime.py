@@ -30,7 +30,7 @@ from ..core.provider import Health, Manifest
 from ..core.runrecord import RecorderHandle
 from ..spi import AgentRuntimeProvider, MemoryItem
 
-VERSION = "0.2.0"
+VERSION = "1.0.0"
 
 PROPOSAL_SCHEMA: dict = {
     "type": "object",

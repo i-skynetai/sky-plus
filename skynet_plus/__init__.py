@@ -14,7 +14,7 @@ replaceable, all checked before the first call by `skynet doctor`.
 """
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"
 
 from .core.contracts import Task, Tool, State, Result, Step, AgentSpec, tool
 from .core.kernel import Kernel, Services, DoctorReport

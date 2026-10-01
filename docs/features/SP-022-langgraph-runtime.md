@@ -1,6 +1,6 @@
 # SP-022 — LangGraph agent runtime
 
-**Status:** Done (0.2.0, unreleased) · **Owner:** @arupmmi07 · **Issue:** —
+**Status:** Done (1.0) · **Owner:** @arupmmi07 · **Issue:** —
 
 ## What is missing today
 

@@ -22,7 +22,7 @@ from ..spi import (AgentRuntimeProvider, Authorization, AuthorizationProvider, D
                    GuardrailProvider, MemoryItem, MemoryProvider, ModelProvider, ModelResponse,
                    TelemetryProvider, Verdict)
 
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 _WORD = re.compile(r"[a-z0-9]+")
 _STOP = {"the", "a", "an", "to", "of", "is", "are", "was", "be", "do", "does", "this", "that",
          "and", "or", "please", "i", "my", "me", "it", "in", "on", "for", "with", "you", "your"}

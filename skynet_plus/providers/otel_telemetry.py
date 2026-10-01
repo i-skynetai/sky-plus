@@ -20,7 +20,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from ..core.provider import Health, Manifest
 from ..spi import TelemetryProvider
 
-VERSION = "0.2.0"
+VERSION = "1.0.0"
 
 
 def _attr(value: Any) -> Any:

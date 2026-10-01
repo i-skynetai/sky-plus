@@ -39,8 +39,9 @@ harness for coding agents, and not a tool that Claude Code or Codex call. Not a 
 
 ## Status
 
-**0.2.0, unreleased.** The kernel plus the first real runtime. Tested with the standard
-library only, and with LangGraph when its extra is installed:
+**1.0.0, accepted; tagged after the first live-model run.** The kernel, the development
+stack and the audit record, tested with the standard library only and with every adapter
+when its extra is installed:
 
 - portable contracts: `Agent`, `Task`, `Tool`, `State`, `Result`;
 - provider manifests with declared features, version ranges and dependencies;

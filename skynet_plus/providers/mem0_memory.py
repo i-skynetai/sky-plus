@@ -16,7 +16,7 @@ from mem0 import AsyncMemory  # noqa: E402
 from ..core.provider import Health, Manifest
 from ..spi import MemoryItem, MemoryProvider
 
-VERSION = "0.2.0"
+VERSION = "1.0.0"
 _IDS = {"agent": "agent_id", "user": "user_id", "run": "run_id"}
 
 

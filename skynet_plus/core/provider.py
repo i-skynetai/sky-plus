@@ -47,7 +47,7 @@ class Manifest:
     version: str
     provides: dict = field(default_factory=dict)      # feature -> bool
     requires: tuple[str, ...] = ()                    # capabilities that must be initialised first
-    skynet_api: str = ">=0.1,<1"
+    skynet_api: str = ">=1,<2"
     package: str | None = None                        # pip extra or distribution that ships it
     description: str = ""
 
