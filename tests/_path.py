@@ -6,3 +6,4 @@ atexit.register(_scratch.cleanup)
 os.environ.setdefault("SKYNET_RUN_LOG", os.path.join(_scratch.name, "runs.jsonl"))
 os.environ.setdefault("SKYNET_CONFIG_SEARCH", "0")
 os.environ.pop("SKYNET_CONFIG", None)
+os.chdir(_scratch.name)      # as if run from an empty folder: no skynet.yaml of the repo's own leaks in

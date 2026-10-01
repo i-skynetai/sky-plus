@@ -2,8 +2,9 @@
 
 One span per run and, through the kernel's tracing of every provider call, a child span
 per model, memory, decision, guardrail and tool call, each tagged with the provider and
-its version. Exporters: `console`, `otlp` (the standard endpoint variables apply), and
-`memory` for tests. The global tracer provider is left alone unless `set_global: true`.
+its version. Exporters: `otlp` (the default when OTEL_EXPORTER_OTLP_ENDPOINT is set), `console`,
+`memory` for tests, and `none` (the default otherwise: spans exist in-process, nothing is
+printed). The global tracer provider is left alone unless `set_global: true`.
 """
 from __future__ import annotations
 
@@ -34,7 +35,7 @@ class OpenTelemetryTelemetry(TelemetryProvider):
 
     def __init__(self, config: dict | None = None) -> None:
         super().__init__(config)
-        default = "otlp" if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") else "console"
+        default = "otlp" if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") else "none"
         self.exporter_name: str = str(self.config.get("exporter", default))
         self.service_name: str = str(self.config.get("service_name", "skynet-plus"))
         self.exporter: Any = None
@@ -64,7 +65,8 @@ class OpenTelemetryTelemetry(TelemetryProvider):
     async def health(self) -> Health:
         if self._tracer is None:
             return Health(ok=False, detail="not initialised")
-        return Health(ok=True, detail=f"exporter {self.exporter_name}; service {self.service_name}")
+        hint = "; set OTEL_EXPORTER_OTLP_ENDPOINT or `exporter: console` to see spans" if self.exporter_name == "none" else ""
+        return Health(ok=True, detail=f"exporter {self.exporter_name}; service {self.service_name}{hint}")
 
     @contextmanager
     def span(self, name: str, attributes: dict | None = None) -> Iterator[Any]:

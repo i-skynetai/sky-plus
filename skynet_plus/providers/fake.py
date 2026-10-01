@@ -254,9 +254,12 @@ class FakeAgentRuntime(AgentRuntimeProvider):
         context: list[str] = []
         memory = services.get("memory")
         if memory:
-            recalled = await memory.recall(task.text, scope={"agent": spec.name})
-            context = [m.content for m in recalled]
-            step("memory.recall", hits=len(recalled))
+            try:
+                recalled = await memory.recall(task.text, scope={"agent": spec.name})
+                context = [m.content for m in recalled]
+                step("memory.recall", hits=len(recalled))
+            except Exception as exc:  # noqa: BLE001 — memory is auxiliary; the run goes on without it
+                step("memory.failed", stage="recall", error=f"{type(exc).__name__}: {str(exc)[:200]}")
 
         tool_result: Any = None
         if spec.tools:
@@ -318,8 +321,11 @@ class FakeAgentRuntime(AgentRuntimeProvider):
                 step("guardrail.modified", stage="output")
 
         if memory:
-            await memory.remember(MemoryItem(f"{task.text} -> {answer}", scope={"agent": spec.name}))
-            step("memory.remember")
+            try:
+                await memory.remember(MemoryItem(f"{task.text} -> {answer}", scope={"agent": spec.name}))
+                step("memory.remember")
+            except Exception as exc:  # noqa: BLE001
+                step("memory.failed", stage="remember", error=f"{type(exc).__name__}: {str(exc)[:200]}")
         telemetry = services.get("telemetry")
         if telemetry:
             await telemetry.emit("agent.completed", agent=spec.name, task=task.id)

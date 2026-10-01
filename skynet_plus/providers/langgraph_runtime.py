@@ -156,7 +156,11 @@ class LangGraphRuntime(AgentRuntimeProvider):
         memory = ctx.services.get("memory")
         if not memory:
             return {"context": []}
-        hits = await memory.recall(ctx.task.text, scope={"agent": ctx.spec.name})
+        try:
+            hits = await memory.recall(ctx.task.text, scope={"agent": ctx.spec.name})
+        except Exception as exc:  # noqa: BLE001 — memory is auxiliary; the run goes on without it
+            ctx.step("memory.failed", stage="recall", error=f"{type(exc).__name__}: {str(exc)[:200]}")
+            return {"context": []}
         ctx.step("memory.recall", hits=len(hits))
         return {"context": [m.content for m in hits]}
 
@@ -273,8 +277,11 @@ class LangGraphRuntime(AgentRuntimeProvider):
                 ctx.step("guardrail.modified", stage="output")
         memory = ctx.services.get("memory")
         if memory:
-            await memory.remember(MemoryItem(f"{ctx.task.text} -> {answer}", scope={"agent": ctx.spec.name}))
-            ctx.step("memory.remember")
+            try:
+                await memory.remember(MemoryItem(f"{ctx.task.text} -> {answer}", scope={"agent": ctx.spec.name}))
+                ctx.step("memory.remember")
+            except Exception as exc:  # noqa: BLE001
+                ctx.step("memory.failed", stage="remember", error=f"{type(exc).__name__}: {str(exc)[:200]}")
         telemetry = ctx.services.get("telemetry")
         if telemetry:
             await telemetry.emit("agent.completed", agent=ctx.spec.name, task=ctx.task.id, runtime="langgraph")

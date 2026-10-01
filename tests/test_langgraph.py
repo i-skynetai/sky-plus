@@ -134,6 +134,22 @@ class TheLangGraphRuntime(unittest.TestCase):
         result = Agent("s", "x", kernel=kernel).run_sync("hello")
         self.assertTrue(result.output.endswith("[checked]"), result)
 
+    def test_a_memory_failure_is_recorded_and_the_run_still_succeeds(self):
+        from skynet_plus.spi import MemoryProvider
+
+        class Flaky(MemoryProvider):
+            manifest = Manifest(id="flaky", capability="memory", version="0", provides={"recall": True})
+            async def remember(self, item): raise ConnectionError("store down")
+            async def recall(self, query, scope=None, limit=5): raise ConnectionError("store down")
+            async def forget(self, scope=None): return 0
+        reg = Registry(); reg.register_all(fake.ALL); reg.register(rules.RulesGuardrail); reg.register(Flaky)
+        from skynet_plus.providers.langgraph_runtime import LangGraphRuntime
+        reg.register(LangGraphRuntime)
+        kernel = Kernel.load(None, profile="local", registry=reg, overrides={"agent-runtime": "langgraph", "memory": "flaky"})
+        result = Agent("m", "x", tools=[lookup_order], kernel=kernel).run_sync("order 9")
+        self.assertTrue(result.ok, result.error)
+        self.assertEqual([s.detail["stage"] for s in result.steps if s.kind == "memory.failed"], ["recall", "remember"])
+
     def test_it_passes_the_conformance_checks(self):
         from skynet_plus.conformance import check_provider
         from skynet_plus.providers.langgraph_runtime import LangGraphRuntime

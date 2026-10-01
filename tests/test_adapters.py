@@ -152,9 +152,32 @@ class TheMem0Memory(unittest.TestCase):
     def test_conformance(self):
         self.assertEqual(asyncio.run(check_provider(self.cls, {})), [])
 
+    def test_extraction_failure_falls_back_to_raw_storage_and_says_so(self):
+        class Rejecting(_StubMem0):
+            async def add(self, messages, *, metadata=None, infer=True, **ids):
+                if infer:
+                    raise RuntimeError("Unsupported value: 'temperature'")
+                return await super().add(messages, metadata=metadata, infer=False, **ids)
+        with mock.patch("skynet_plus.providers.mem0_memory.AsyncMemory", Rejecting):
+            m = self.cls({})
+            asyncio.run(m.initialize())
+            mid = asyncio.run(m.remember(MemoryItem("prefers email", scope={"agent": "a1"})))
+            self.assertTrue(mid)
+            self.assertEqual(len(m.warnings), 1)
+            self.assertIn("stored the text as written", m.warnings[0])
+            self.assertEqual(asyncio.run(m.recall("email", scope={"agent": "a1"}))[0].metadata, {"raw": True})
+
+    def test_defaults_use_a_model_that_accepts_temperature_and_a_project_local_store(self):
+        m = self.cls({"__skynet__": {"config_dir": "/proj", "run_log": "/proj/.skynet/runs.jsonl", "profile": "development"}})
+        self.assertEqual(m.mem0_config["llm"]["config"]["model"], "gpt-4o-mini")
+        self.assertEqual(m.mem0_config["vector_store"]["config"]["path"], "/proj/.skynet/mem0")
+        self.assertEqual(self.cls({"llm_model": "gpt-4.1-mini"}).mem0_config["llm"]["config"]["model"], "gpt-4.1-mini")
+        self.assertEqual(self.cls({"config": {"llm": {"provider": "ollama"}}}).mem0_config, {"llm": {"provider": "ollama"}})
+
     def test_a_store_that_cannot_start_is_a_health_failure_not_a_crash(self):
         class Broken:
-            def __init__(self): raise RuntimeError("no OPENAI_API_KEY")
+            @classmethod
+            def from_config(cls, config): raise RuntimeError("no OPENAI_API_KEY")
         with mock.patch("skynet_plus.providers.mem0_memory.AsyncMemory", Broken):
             m = self.cls({})
             asyncio.run(m.initialize())
@@ -186,6 +209,14 @@ class TheOpenTelemetryProvider(unittest.TestCase):
     def test_conformance(self):
         from skynet_plus.providers.otel_telemetry import OpenTelemetryTelemetry
         self.assertEqual(asyncio.run(check_provider(OpenTelemetryTelemetry, {"exporter": "memory"})), [])
+
+    def test_nothing_is_printed_unless_an_exporter_is_chosen(self):
+        from skynet_plus.providers.otel_telemetry import OpenTelemetryTelemetry
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("OTEL_EXPORTER_OTLP_ENDPOINT", None)
+            self.assertEqual(OpenTelemetryTelemetry({}).exporter_name, "none")
+            os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4318"
+            self.assertEqual(OpenTelemetryTelemetry({}).exporter_name, "otlp")
 
 
 @unittest.skipUnless(HAVE["deepeval"], "deepeval is not installed")

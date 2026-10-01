@@ -21,6 +21,13 @@ The base product: what an agentic team needs on day one, so it writes only the a
 - **Conformance.** `skynet_plus.conformance.check_provider` for any provider class; every
   built-in passes.
 - **CLI.** `skynet init`, `doctor`, `providers`, `run`, `inspect`, `eval`, `swap`.
+- **Found in the first live run, fixed.** Mem0's own default extraction model rejects
+  its own default temperature; the adapter now defaults to `gpt-4o-mini`, keeps vectors
+  under the project instead of `/tmp/qdrant`, and stores text as written if extraction
+  fails. A memory failure is recorded as `memory.failed` and never fails a run, in both
+  runtimes. The OpenTelemetry console exporter is opt-in; the default exports to OTLP
+  when an endpoint is set and otherwise prints nothing. Providers receive the project
+  context (config folder, run log, profile) under the reserved `__skynet__` key.
 - **Not in 1.0, by decision.** The decision capability (Praxis, System-1 routing),
   streaming, resume after human approval, a second runtime, the production profile's
   providers. See `ROADMAP.md`.

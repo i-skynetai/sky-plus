@@ -62,8 +62,12 @@ when its extra is installed:
     govern, act, finish), checkpointed per run; the example runs on it unchanged;
   - `litellm` — the model: any provider LiteLLM reaches, structured output and tool
     calls mapped to the portable response;
-  - `mem0` — memory, scoped per agent, user and run;
+  - `mem0` — memory, scoped per agent, user and run; facts extracted with `gpt-4o-mini`
+    by default (`llm_model:` changes it), vectors under the project's `.skynet/mem0`; a
+    memory failure is recorded in the run and never fails it;
   - `otel` — OpenTelemetry: one span per run and a child span per provider and tool call;
+    exported to OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, to the terminal with
+    `exporter: console`, otherwise kept in-process;
   - `deepeval` — evaluation over the canonical run record, with `skynet eval`.
 
 `skynet doctor --profile development` says exactly what is missing: without a model key

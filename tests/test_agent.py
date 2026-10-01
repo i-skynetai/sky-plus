@@ -116,6 +116,44 @@ class AnAgentRunsOnTheLocalProfile(unittest.TestCase):
         self.assertIn("tool.executed", [e["name"] for e in seen["events"]])
 
 
+class MemoryIsAuxiliary(unittest.TestCase):
+    def test_a_memory_that_fails_is_recorded_and_the_run_still_succeeds(self):
+        from skynet_plus.core.provider import Manifest
+        from skynet_plus.core.registry import Registry
+        from skynet_plus.providers import fake
+        from skynet_plus.spi import MemoryProvider
+
+        class Flaky(MemoryProvider):
+            manifest = Manifest(id="flaky", capability="memory", version="0", provides={"recall": True})
+            async def remember(self, item): raise ConnectionError("store down")
+            async def recall(self, query, scope=None, limit=5): raise ConnectionError("store down")
+            async def forget(self, scope=None): return 0
+        reg = Registry(); reg.register_all(fake.ALL); reg.register(Flaky)
+        kernel = Kernel.load(None, profile="local", overrides={"memory": "flaky"}, registry=reg)
+        result = Agent("m", "x", tools=[lookup_order], kernel=kernel).run_sync("order 9")
+        self.assertTrue(result.ok, result.error)
+        failed = [s for s in result.steps if s.kind == "memory.failed"]
+        self.assertEqual([s.detail["stage"] for s in failed], ["recall", "remember"])
+        self.assertIn("store down", failed[0].detail["error"])
+
+    def test_providers_receive_the_project_context(self):
+        from skynet_plus.core.provider import Manifest
+        from skynet_plus.core.registry import Registry
+        from skynet_plus.providers import fake
+        seen = {}
+
+        class Nosy(fake.FakeModel):
+            manifest = Manifest(id="nosy", capability="model", version="0", provides={"completion": True})
+            def __init__(self, config=None):
+                super().__init__(config); seen.update(self.config.get("__skynet__", {}))
+        reg = Registry(); reg.register_all(fake.ALL); reg.register(Nosy)
+        with tempfile.TemporaryDirectory() as d:
+            cfg = config_in(d)
+            Agent("p", "x", config=cfg, kernel=Kernel.load(cfg, registry=reg, overrides={"model": "nosy"})).run_sync("hi")
+            self.assertEqual(seen["config_dir"], str(Path(d).resolve()))
+            self.assertEqual(seen["profile"], "local")
+
+
 class TheDecisionServiceAbstainsWhenUnsure(unittest.TestCase):
     def test_choice_boolean_score_and_rank(self):
         async def go():

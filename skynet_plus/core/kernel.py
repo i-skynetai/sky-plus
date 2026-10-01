@@ -158,8 +158,10 @@ class Kernel:
             raise ResolutionError(resolution.problems)
         providers: dict[str, Provider] = {}
         try:
+            project = {"config_dir": str(Path(self.config.source).resolve().parent) if self.config.source else str(Path.cwd()),
+                       "run_log": self.config.run_log, "profile": self.config.profile}
             for b in resolution.bindings:
-                instance = b.provider_cls(b.config)
+                instance = b.provider_cls({**b.config, "__skynet__": project})
                 try:
                     await instance.initialize()
                     health = await instance.health()
@@ -229,7 +231,9 @@ class Kernel:
                 if b is None:
                     report.rows.append(DoctorRow(cap, pid, "ERROR", "resolved but unbound"))
                     continue
-                instance = b.provider_cls(b.config)
+                project = {"config_dir": str(Path(self.config.source).resolve().parent) if self.config.source else str(Path.cwd()),
+                           "run_log": self.config.run_log, "profile": self.config.profile}
+                instance = b.provider_cls({**b.config, "__skynet__": project})
                 try:
                     await instance.initialize()
                     health = await instance.health()
