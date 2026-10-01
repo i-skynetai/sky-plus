@@ -5,7 +5,7 @@ this implements.
 
 ## The shape
 
-![You write the agent; configuration picks everything under it](images/architecture.svg)
+![You write the agent; configuration picks everything under it](images/architecture.png)
 
 An application owns exactly one thing: the agent, its instructions and its tools. Everything
 an agent needs to run in production is a *capability* with one interface, and every
@@ -26,7 +26,7 @@ before anything runs if the new provider cannot do what the agent requires.
 
 ## One run
 
-![One run through the governed loop](images/one-run.svg)
+![One run through the governed loop](images/one-run.png)
 
 The loop is fixed and the application never sees it. The model only *proposes* a step,
 as a typed JSON object. The rules and the authorization service *decide* whether that
@@ -39,7 +39,7 @@ run still completes with its answer.
 
 ## The kernel
 
-![How the kernel turns a config file into a running stack](images/kernel.svg)
+![How the kernel turns a config file into a running stack](images/kernel.png)
 
 A provider ships a *manifest*: its id, version, the capability it serves, the features it
 implements, the capabilities it needs started first, and the Skynet+ versions it was

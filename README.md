@@ -6,25 +6,88 @@
 
 *Build agents, not agent infrastructure.*
 
-**A small, provider-pluggable SDK for building AI agents.** You write the agent: its
-instructions and its tools. A configuration file picks what runs underneath it — the
-agent runtime, the model, memory, guardrails, evaluation and telemetry — and every one of
-those can be swapped by changing one line. Before the first call, `skynet doctor` checks
-the whole stack and names exactly what is missing. After every run, an audit record the
-agent cannot edit says what happened.
+**Skynet+ is a small Python SDK for building AI agents.** You write the agent: what it
+should do and which tools it may use. Skynet+ supplies everything else an agent needs to
+run: the loop that runs it, the model, memory, safety rules, scoring, tracing, and a log
+of what happened. Each of those is a plug-in you choose in one config file, and you can
+swap any of them by changing one line.
 
-![You write the agent; configuration picks everything under it](docs/images/architecture.svg)
+![Skynet+ in one picture](docs/images/architecture.png)
 
-## Why
+## The problem it solves
 
-Every agent project rebuilds the same six things around the model: a loop that runs the
-agent, a way to call a model, memory, safety checks, a way to score results, and a log of
-what happened. Teams build them again each time, badly, and welded to one vendor. Skynet+
-is those six things, wired together behind stable interfaces, with the best open-source
-implementations adopted as adapters rather than reinvented. The application owns the
-domain; Skynet+ owns the infrastructure needed to run it reliably.
+Every agent project builds the same six things around the model, again and again:
 
-## The whole developer experience
+1. a loop that runs the agent step by step,
+2. a way to call a model,
+3. memory across runs,
+4. safety checks on what the agent does,
+5. a way to score the results,
+6. a log of what happened.
+
+Teams write these from scratch, usually tied to one vendor. Skynet+ gives you all six,
+already connected, with good open-source tools behind each one. You keep your code
+focused on the actual job.
+
+## Two words you need
+
+- **Provider** — the plug-in that does one job, for example "LiteLLM is the model
+  provider". Every job has a fixed interface, so providers are interchangeable.
+- **Profile** — a named set of providers. `local` uses in-memory fakes, so it runs with
+  no install and no keys. `development` uses real tools: LangGraph, LiteLLM, Mem0,
+  OpenTelemetry, DeepEval.
+
+## See it work in sixty seconds
+
+No install, no keys. The fake model does not think; it composes an answer from the
+instructions, the task and the tool result. Everything else is real: the loop, the
+safety rules, the scoring, the log.
+
+```bash
+git clone https://github.com/arupmmi07/skynet-plus.git
+cd skynet-plus
+python examples/hello_agent.py
+```
+
+![The example on the local profile](docs/images/demo.png)
+
+## Use it in your own project, five steps
+
+**1. Install the real stack** (a virtual environment with Python 3.11 or newer):
+
+```bash
+pip install "skynet-plus[development]"
+```
+
+**2. Create the config file** in your project folder:
+
+```bash
+skynet init --profile development
+```
+
+This writes `skynet.yaml`. Open it; every line is one provider choice:
+
+```yaml
+profile: development
+agent-runtime: {provider: langgraph}
+model:         {provider: litellm, model: gpt-4o-mini}
+memory:        {provider: mem0}
+guardrail:     {provider: rules}
+evaluation:    {provider: deepeval}
+telemetry:     {provider: opentelemetry}
+```
+
+**3. Check the stack before you write any code:**
+
+```bash
+export OPENAI_API_KEY=...     # or point `model:` at any provider LiteLLM supports
+skynet doctor
+```
+
+`doctor` prints one row per provider. Without a key it says exactly which variable is
+missing; with one, every row reads `OK`.
+
+**4. Write the agent.** This is the whole file:
 
 ```python
 from skynet_plus import Agent, tool
@@ -32,104 +95,69 @@ from skynet_plus import Agent, tool
 @tool
 def lookup_order(input: str) -> dict:
     """Find an order by the number in the request."""
-    ...
+    return {"order": "4412", "status": "shipped"}
 
 agent = Agent(name="support-agent",
-              instructions="Resolve customer support issues.",
+              instructions="Resolve customer support issues. Be brief.",
               tools=[lookup_order])
-result = await agent.run("Where is order 4412?")
-await agent.close()
+
+result = agent.run_sync("Where is order 4412?")
+print(result.output)
 ```
 
-```yaml
-# skynet.yaml — change a line, run `skynet doctor`; the agent's code does not change
-profile: development
-agent-runtime: {provider: langgraph}
-model:         {provider: litellm, model: ${SKYNET_MODEL:gpt-4o-mini}}
-memory:        {provider: mem0}
-guardrail:     {provider: rules, deny_tools: [wire_money]}
-```
-
-## Try it in sixty seconds
-
-No install and no keys. The `local` profile runs every capability on an in-memory fake, so
-the loop, the guardrails, the evaluation and the audit record all work; only the model
-does not think — it composes an answer from the instructions, the task and the tool result.
+**5. Look at what happened:**
 
 ```bash
-git clone https://github.com/arupmmi07/skynet-plus.git && cd skynet-plus
-python examples/hello_agent.py
+skynet inspect     # the run, step by step, from the tamper-evident log
+skynet eval        # scores for the last run
 ```
 
-![The example on the local profile](docs/images/demo.svg)
+To change a provider later, edit one line in `skynet.yaml` and run `skynet doctor`
+again. Your agent code does not change.
 
-## Then a real model, in five minutes
+## What happens on every run
 
-```bash
-uv venv --python 3.12 .venv && source .venv/bin/activate     # or python3.12 -m venv .venv
-uv pip install -e ".[development]"                           # LangGraph, LiteLLM, Mem0, OpenTelemetry, DeepEval
-export OPENAI_API_KEY=...                                    # or any provider LiteLLM reaches: edit `model:`
-skynet init --profile development && skynet doctor
-python examples/hello_agent.py development
-skynet run "Where is order 4412?" && skynet inspect && skynet eval
-```
+![One run, step by step](docs/images/one-run.png)
 
-`skynet doctor` without a key reports two `DEGRADED` rows naming `OPENAI_API_KEY`; with
-one, every row is `OK`. Nothing phones home: the adapters opt out of their libraries'
-telemetry unless you opt back in.
+The model only *proposes* the next step. The safety rules *decide* whether it may happen.
+The runtime *executes* it and feeds the result back. The loop ends with an answer, with a
+refusal, or with a request for a human, and every step is written to a log the agent
+cannot edit.
 
-## What you get
+## What you get out of the box
 
-| | |
-|---|---|
-| **A governed loop** | the model proposes a step; the rules and the authorization service decide; the runtime executes; a denial or a request for a human ends the run with that status |
-| **Any model** | LiteLLM reaches OpenAI, Anthropic, Azure, Bedrock, Vertex, Ollama, vLLM and more; structured output and tool calls map to one portable response |
-| **Memory that cannot break a run** | Mem0, scoped per agent, user and run; a failing recall or remember is recorded, never fatal |
-| **Guardrails on every step** | input, tool call and output; deny, or modify in place; patterns run over nested content as written |
-| **Evaluation from the record** | DeepEval metrics over the canonical run record, with `skynet eval` |
-| **One trace per run** | an OpenTelemetry span for the run and a child span per provider and tool call |
-| **An audit record** | hash-chained JSON lines; `skynet inspect` rebuilds a run and reports a broken chain |
-| **A doctor** | the stack is checked before the first call, with the exact fix for each missing row |
-| **Conformance** | one call checks any provider class: lifecycle, every declared feature, no foreign types across the interface |
+- **Any model.** LiteLLM reaches OpenAI, Anthropic, Azure, Bedrock, Vertex, Ollama,
+  vLLM and more.
+- **Memory** per agent and per user, through Mem0. If memory fails, the run still
+  finishes; the failure is logged.
+- **Safety rules** on the input, on every tool call, and on the output. Deny, or
+  rewrite in place.
+- **Scores** for each run through DeepEval.
+- **A trace** per run through OpenTelemetry: one span per provider call and per tool.
+- **A log you can trust.** Each line carries the hash of the line before it. If anyone
+  edits or deletes a line, `skynet inspect` says where.
+- **A doctor** that checks everything before the first call and names the fix.
 
 ## What it is not
 
-Not another agent framework: it adopts LangGraph and the others behind adapters. Not a
-harness for coding agents, and not a tool that Claude Code or Codex call. Not a model.
+Not another agent framework; it uses LangGraph and the others underneath. Not a tool for
+Claude Code or Codex. Not a model.
 
 ## Status
 
-**1.0.0.** 109 tests on Python 3.11 to 3.14, with and without the adapters; the adapter
-tests run offline by design (LiteLLM's mock mode, a Mem0 stub, an in-memory exporter, a
-judge-free metric). Lint and type checks run in CI. The decision capability — fast, typed,
-calibrated decisions through [Praxis](https://github.com/arupmmi07/praxis) — is the first
-item after 1.0; see the [roadmap](ROADMAP.md) for that and everything else by ID.
+Version 1.0.0. 110 tests on Python 3.11 to 3.14, lint and type checks in CI. The next
+item on the [roadmap](ROADMAP.md) is a fast-decision layer through
+[Praxis](https://github.com/arupmmi07/praxis); everything after that is listed there by ID.
 
-## Documentation
+## Read more
 
 | | |
 |---|---|
-| [How it works](docs/architecture.md) | the shape, one run, the kernel, the audit record — three diagrams |
-| [Writing a provider](docs/providers.md) | manifest, interface, registration, the conformance call |
-| [Roadmap](ROADMAP.md) | every feature with an ID, status and owner |
-| [Architecture pack](docs/architecture/README.md) | the six design documents this implements |
-| [Contributing](CONTRIBUTING.md) | running the checks, what a change needs |
-| [Changelog](CHANGELOG.md) | |
-
-## Layout
-
-```
-skynet_plus/
-  core/        contracts · provider manifests · registry · resolver · profiles · config · run record · kernel
-  spi/         one interface per capability (twelve)
-  providers/   fakes, the rules guardrail, and the langgraph · litellm · mem0 · otel · deepeval adapters
-  sdk/         Agent
-  conformance.py
-  cli.py       skynet init · doctor · providers · run · inspect · eval · swap
-docs/          how it works, how to write a provider, design notes, the architecture pack
-examples/      hello_agent.py
-tests/
-```
+| [How it works](docs/architecture.md) | the shape, one run, the kernel, the log; three diagrams |
+| [Writing a provider](docs/providers.md) | add your own model, memory or guardrail |
+| [Roadmap](ROADMAP.md) | every planned feature, with status and owner |
+| [Architecture pack](docs/architecture/README.md) | the six design documents behind this |
+| [Contributing](CONTRIBUTING.md) | how to run the checks |
 
 ## Licence
 
