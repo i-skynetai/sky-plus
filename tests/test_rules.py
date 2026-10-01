@@ -1,5 +1,8 @@
-import asyncio, unittest
+import asyncio
+import unittest
+
 from _path import *  # noqa
+
 from skynet_plus import Agent, Kernel, tool
 from skynet_plus.core.provider import Manifest
 from skynet_plus.core.registry import Registry

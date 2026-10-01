@@ -121,8 +121,15 @@ def load(path: str | Path | None = None, profile: str | None = None,
     except KeyError as exc:
         raise ConfigError(f"{where}: {exc}") from None
 
+    # A file's provider sections belong to the profile the file names. Asking for another
+    # profile explicitly (`--profile local`, `Agent(profile="local")`) means that profile's
+    # own stack; the file still supplies requirements and the run log.
+    file_profile = raw.get("profile")
+    apply_sections = profile is None or file_profile in (None, profile)
     for key, value in raw.items():
         if key in CAPABILITIES:
+            if not apply_sections:
+                continue
             if value is None or value is False:
                 caps.pop(key, None)                      # `memory: null` switches it off
             elif isinstance(value, dict):

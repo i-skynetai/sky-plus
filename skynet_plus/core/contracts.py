@@ -9,8 +9,9 @@ import inspect
 import time
 import typing
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from .errors import ConfigError
 from .provider import CAPABILITIES
@@ -27,7 +28,7 @@ class Task:
     metadata: dict = field(default_factory=dict)
 
     @classmethod
-    def of(cls, value: "Task | str | dict") -> "Task":
+    def of(cls, value: Task | str | dict) -> Task:
         return value if isinstance(value, Task) else cls(input=value)
 
     @property
@@ -44,8 +45,8 @@ class Tool:
     parameters: dict = field(default_factory=dict)
 
     @classmethod
-    def from_function(cls, fn: Callable[..., Any], name: str | None = None,
-                      description: str | None = None) -> "Tool":
+    def from_function(cls, fn: Tool | Callable[..., Any], name: str | None = None,
+                      description: str | None = None) -> Tool:
         if isinstance(fn, Tool):
             return fn
         return cls(name=name or fn.__name__, fn=fn,
@@ -101,7 +102,8 @@ def parameters_schema(fn: Callable[..., Any]) -> dict:
             continue
         prop = dict(_json_type(hints.get(p.name, p.annotation)))
         if p.default is not inspect.Parameter.empty:
-            prop["default"] = p.default if isinstance(p.default, (str, int, float, bool, type(None))) else repr(p.default)
+            plain = isinstance(p.default, (str, int, float, bool, type(None)))
+            prop["default"] = p.default if plain else repr(p.default)
         else:
             required.append(p.name)
         properties[p.name] = prop

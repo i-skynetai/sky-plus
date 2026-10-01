@@ -1,7 +1,12 @@
-import asyncio, json, tempfile, unittest
+import asyncio
+import json
+import tempfile
+import unittest
 from pathlib import Path
+
 from _path import *  # noqa
-from skynet_plus import Agent, Kernel, ConfigError, ResolutionError, tool
+
+from skynet_plus import Agent, ConfigError, Kernel, ResolutionError, tool
 from skynet_plus.core.runrecord import find_run, read_runs
 from skynet_plus.spi import DecisionRequest, Question
 
@@ -98,9 +103,9 @@ class AnAgentRunsOnTheLocalProfile(unittest.TestCase):
             async def evaluate(self, run, metrics=None):
                 seen.update(run)
                 return await super().evaluate(run, metrics)
+        from skynet_plus.core.provider import Manifest
         from skynet_plus.core.registry import Registry
         from skynet_plus.providers import fake
-        from skynet_plus.core.provider import Manifest
         Spy.manifest = Manifest(id="spy", capability="evaluation", version="0", provides={"outcome": True})
         reg = Registry(); reg.register_all(fake.ALL); reg.register(Spy)
         kernel = Kernel.load(None, profile="local", overrides={"evaluation": "spy"}, registry=reg)

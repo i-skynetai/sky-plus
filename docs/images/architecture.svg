@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520" font-family="Helvetica, Arial, sans-serif" font-size="14">
+  <rect width="960" height="520" fill="#ffffff"/>
+  <text x="480" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#222">You write the agent. Configuration picks everything under it.</text>
+
+  <rect x="280" y="54" width="400" height="58" rx="6" fill="#d9f2e0" stroke="#2e8b57" stroke-width="1.5"/>
+  <text x="480" y="78" text-anchor="middle" font-weight="bold" fill="#222">Your agent</text>
+  <text x="480" y="98" text-anchor="middle" fill="#333" font-size="13">Agent(name, instructions, tools) · agent.run(task)</text>
+  <line x1="480" y1="112" x2="480" y2="136" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="280" y="138" width="400" height="58" rx="6" fill="#dbe8fb" stroke="#2f6fd6" stroke-width="1.5"/>
+  <text x="480" y="162" text-anchor="middle" font-weight="bold" fill="#222">Kernel</text>
+  <text x="480" y="182" text-anchor="middle" fill="#333" font-size="13">skynet.yaml → resolve providers → check requirements → start</text>
+
+  <line x1="480" y1="196" x2="480" y2="222" stroke="#555" stroke-width="1.5"/>
+  <line x1="92" y1="222" x2="868" y2="222" stroke="#555" stroke-width="1.5"/>
+  <g stroke="#555" stroke-width="1.5" marker-end="url(#a)">
+    <line x1="92" y1="222" x2="92" y2="246"/><line x1="222" y1="222" x2="222" y2="246"/><line x1="351" y1="222" x2="351" y2="246"/>
+    <line x1="480" y1="222" x2="480" y2="246"/><line x1="609" y1="222" x2="609" y2="246"/><line x1="738" y1="222" x2="738" y2="246"/><line x1="868" y1="222" x2="868" y2="246"/>
+  </g>
+
+  <!-- capability boxes -->
+  <g font-size="13">
+    <rect x="34" y="248" width="116" height="92" rx="6" fill="#f7f7f7" stroke="#888" stroke-width="1.5"/>
+    <text x="92" y="270" text-anchor="middle" font-weight="bold" fill="#222">runtime</text>
+    <text x="92" y="292" text-anchor="middle" fill="#2e8b57">LangGraph</text>
+    <text x="92" y="310" text-anchor="middle" fill="#888">fake</text>
+
+    <rect x="164" y="248" width="116" height="92" rx="6" fill="#f7f7f7" stroke="#888" stroke-width="1.5"/>
+    <text x="222" y="270" text-anchor="middle" font-weight="bold" fill="#222">model</text>
+    <text x="222" y="292" text-anchor="middle" fill="#2e8b57">LiteLLM</text>
+    <text x="222" y="310" text-anchor="middle" fill="#888">fake</text>
+
+    <rect x="293" y="248" width="116" height="92" rx="6" fill="#f7f7f7" stroke="#888" stroke-width="1.5"/>
+    <text x="351" y="270" text-anchor="middle" font-weight="bold" fill="#222">memory</text>
+    <text x="351" y="292" text-anchor="middle" fill="#2e8b57">Mem0</text>
+    <text x="351" y="310" text-anchor="middle" fill="#888">fake</text>
+
+    <rect x="422" y="248" width="116" height="92" rx="6" fill="#f7f7f7" stroke="#888" stroke-width="1.5"/>
+    <text x="480" y="270" text-anchor="middle" font-weight="bold" fill="#222">guardrail</text>
+    <text x="480" y="292" text-anchor="middle" fill="#2e8b57">rules</text>
+    <text x="480" y="310" text-anchor="middle" fill="#888">fake</text>
+
+    <rect x="551" y="248" width="116" height="92" rx="6" fill="#f7f7f7" stroke="#888" stroke-width="1.5"/>
+    <text x="609" y="270" text-anchor="middle" font-weight="bold" fill="#222">evaluation</text>
+    <text x="609" y="292" text-anchor="middle" fill="#2e8b57">DeepEval</text>
+    <text x="609" y="310" text-anchor="middle" fill="#888">fake</text>
+
+    <rect x="680" y="248" width="116" height="92" rx="6" fill="#f7f7f7" stroke="#888" stroke-width="1.5"/>
+    <text x="738" y="270" text-anchor="middle" font-weight="bold" fill="#222">telemetry</text>
+    <text x="738" y="292" text-anchor="middle" fill="#2e8b57">OpenTelemetry</text>
+    <text x="738" y="310" text-anchor="middle" fill="#888">fake</text>
+
+    <rect x="810" y="248" width="116" height="92" rx="6" fill="#f7f7f7" stroke="#888" stroke-width="1.5" stroke-dasharray="5 3"/>
+    <text x="868" y="270" text-anchor="middle" font-weight="bold" fill="#222">decision</text>
+    <text x="868" y="292" text-anchor="middle" fill="#888">Praxis, after 1.0</text>
+    <text x="868" y="310" text-anchor="middle" fill="#888">fake</text>
+  </g>
+  <text x="480" y="362" text-anchor="middle" fill="#555" font-size="13">one interface per capability · any provider behind it · swapped by one line of config · checked by `skynet doctor` before the first call</text>
+
+  <rect x="34" y="392" width="892" height="58" rx="6" fill="#fff8e1" stroke="#c9a227" stroke-width="1.2"/>
+  <text x="480" y="414" text-anchor="middle" font-weight="bold" fill="#222">The audit record</text>
+  <text x="480" y="434" text-anchor="middle" fill="#333" font-size="13">every run appends hash-chained JSON lines the agent cannot edit · `skynet inspect` rebuilds a run and reports a broken chain</text>
+
+  <text x="480" y="488" text-anchor="middle" fill="#666" font-size="13">green = the development profile · grey = the local profile, which runs with no installs and no keys</text>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#555"/></marker></defs>
+</svg>

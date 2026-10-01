@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">
+  <rect width="960" height="470" rx="10" fill="#1e1e1e"/>
+  <circle cx="22" cy="20" r="6" fill="#ff5f56"/><circle cx="42" cy="20" r="6" fill="#ffbd2e"/><circle cx="62" cy="20" r="6" fill="#27c93f"/>
+  <text x="480" y="25" text-anchor="middle" fill="#9a9a9a" font-size="12">python examples/hello_agent.py — the local profile, no install, no keys</text>
+  <g fill="#d4d4d4" xml:space="preserve" style="white-space: pre">
+    <text x="20" y="58"><tspan fill="#6a9955">$</tspan> python examples/hello_agent.py</text>
+    <text x="20" y="80">profile: local</text>
+    <text y="102"><tspan x="36">agent-runtime</tspan><tspan x="160" fill="#4ec9b0">OK</tspan><tspan x="260">fake@1.0.0</tspan><tspan x="420">in-memory</tspan></text>
+    <text y="120"><tspan x="36">model</tspan><tspan x="160" fill="#4ec9b0">OK</tspan><tspan x="260">fake@1.0.0</tspan><tspan x="420">no health check implemented</tspan></text>
+    <text y="138"><tspan x="36">memory</tspan><tspan x="160" fill="#4ec9b0">OK</tspan><tspan x="260">fake@1.0.0</tspan><tspan x="420">no health check implemented</tspan></text>
+    <text y="156"><tspan x="36">decision</tspan><tspan x="160" fill="#4ec9b0">OK</tspan><tspan x="260">fake@1.0.0</tspan><tspan x="420">no health check implemented</tspan></text>
+    <text y="174"><tspan x="36">guardrail</tspan><tspan x="160" fill="#4ec9b0">OK</tspan><tspan x="260">fake@1.0.0</tspan><tspan x="420">no health check implemented</tspan></text>
+    <text y="192"><tspan x="36">evaluation</tspan><tspan x="160" fill="#4ec9b0">OK</tspan><tspan x="260">fake@1.0.0</tspan><tspan x="420">no health check implemented</tspan></text>
+    <text y="210"><tspan x="36">telemetry</tspan><tspan x="160" fill="#4ec9b0">OK</tspan><tspan x="260">fake@1.0.0</tspan><tspan x="420">no health check implemented</tspan></text>
+    <text y="228" fill="#9a9a9a"><tspan x="36">knowledge · code · authorization · workflow · payment</tspan><tspan x="580">UNCONFIGURED</tspan><tspan x="700">not part of this profile</tspan></text>
+    <text x="20" y="254">verdict: <tspan fill="#4ec9b0">OK — every configured provider is healthy</tspan></text>
+    <text x="20" y="284">run run-840166f81b34: <tspan fill="#4ec9b0">ok</tspan></text>
+    <text x="20" y="302">steps: run.input → guardrail.input → memory.recall → action.proposed → guardrail.tool</text>
+    <text x="76" y="320">→ tool.executed → model.completed → guardrail.output → memory.remember</text>
+    <text x="20" y="342">answer: [fake@1.0.0] | following: Resolve customer support issues. Be brief.</text>
+    <text x="84" y="360">| task: Where is order 4412? | tool said: {"order": "4412", "status": "shipped", "carrier": "acme-post"}</text>
+    <text x="84" y="378" fill="#9a9a9a">(the local profile's model is a fake: it composes an answer instead of thinking)</text>
+    <text x="20" y="404">evaluation: {'completed': 1.0, 'steps': 9.0}</text>
+    <text x="20" y="422">audit log: .skynet/runs.jsonl   (skynet inspect prints this run)</text>
+    <text x="20" y="452"><tspan fill="#6a9955">$</tspan> python examples/hello_agent.py development</text>
+    <text x="372" y="452" fill="#9a9a9a">   # same agent, real model, after pip install -e ".[development]"</text>
+  </g>
+</svg>

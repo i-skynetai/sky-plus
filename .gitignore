@@ -10,3 +10,6 @@ dist/
 skynet.yaml
 !recipes/*.yaml
 Skynet_Plus_Final_Architecture_Pack/
+.env
+.env.*
+!.env.example

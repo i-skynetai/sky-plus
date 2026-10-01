@@ -1,9 +1,10 @@
 import unittest
 from unittest import mock
+
 from _path import *  # noqa
+
 from skynet_plus.core.provider import Manifest
-from skynet_plus.core.registry import Registry, default_registry
-from skynet_plus.providers import fake
+from skynet_plus.core.registry import default_registry
 from skynet_plus.spi import GuardrailProvider
 
 

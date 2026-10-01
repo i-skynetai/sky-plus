@@ -44,12 +44,14 @@ class LiteLLMModel(ModelProvider):
     manifest = Manifest(id="litellm", capability="model", version=VERSION,
                         provides={"completion": True, "structured": True, "tools": True, "streaming": False},
                         package="litellm",
-                        description="any model LiteLLM can reach — OpenAI, Anthropic, Azure, Bedrock, Vertex, Ollama, vLLM, ...")
+                        description="any model LiteLLM can reach: OpenAI, Anthropic, Azure, Bedrock, Vertex, "
+                                    "Ollama, vLLM, ...")
 
     def __init__(self, config: dict | None = None) -> None:
         super().__init__(config)
         self.model: str = str(self.config.get("model") or "gpt-4o-mini")
-        self.structured_mode: str = str(self.config.get("structured", "auto"))   # auto | json_schema | json_object | prompt
+        # auto | json_schema | json_object | prompt
+        self.structured_mode: str = str(self.config.get("structured", "auto"))
         self.options = {k: v for k, v in self.config.items() if k in _PASS_THROUGH}
 
     async def health(self) -> Health:
@@ -76,7 +78,8 @@ class LiteLLMModel(ModelProvider):
         if mode == "json_schema":
             return {"response_format": {"type": "json_schema",
                                         "json_schema": {"name": "response", "schema": schema}}}, messages
-        instruction = {"role": "system", "content": "Reply with one JSON object matching this schema: " + json.dumps(schema)}
+        instruction = {"role": "system",
+                       "content": "Reply with one JSON object matching this schema: " + json.dumps(schema)}
         if mode == "json_object":
             return {"response_format": {"type": "json_object"}}, [instruction, *messages]
         return {}, [instruction, *messages]

@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Iterable
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from ..core.contracts import AgentSpec, Result, Task, Tool, normalise_requirements
 from ..core.errors import ProviderError
@@ -46,7 +47,7 @@ class Agent:
                                        requirements=self.spec.requirements)
         return self._kernel
 
-    async def start(self) -> "Agent":
+    async def start(self) -> Agent:
         await self.kernel().start(self.spec.requirements)
         return self
 
@@ -55,7 +56,7 @@ class Agent:
         if self._kernel is not None and self._owns_kernel:
             await self._kernel.stop()
 
-    async def __aenter__(self) -> "Agent":
+    async def __aenter__(self) -> Agent:
         return await self.start()
 
     async def __aexit__(self, *exc: Any) -> None:

@@ -22,7 +22,11 @@ VERSION = "1.0.0"
 
 
 def _resolve(spec: str | dict) -> tuple[type, dict]:
-    name, kwargs = (spec, {}) if isinstance(spec, str) else (str(spec.get("name") or spec.get("metric")), {k: v for k, v in spec.items() if k not in ("name", "metric")})
+    if isinstance(spec, str):
+        name, kwargs = spec, {}
+    else:
+        name = str(spec.get("name") or spec.get("metric"))
+        kwargs = {k: v for k, v in spec.items() if k not in ("name", "metric")}
     if ":" in name:
         module, _, attr = name.partition(":")
         cls = getattr(importlib.import_module(module), attr)

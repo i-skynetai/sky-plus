@@ -20,7 +20,7 @@ otel = ["opentelemetry-api>=1.25", "opentelemetry-sdk>=1.25"]
 deepeval = ["deepeval>=1.0"]
 development = ["langgraph>=0.2", "litellm>=1.40", "mem0ai>=0.1", "opentelemetry-api>=1.25",
                "opentelemetry-sdk>=1.25", "deepeval>=1.0"]
-dev = ["pytest>=8", "mypy>=1.10"]
+dev = ["pytest>=8", "mypy>=1.10", "ruff>=0.5"]
 
 [project.scripts]
 skynet = "skynet_plus.cli:main"
@@ -28,3 +28,26 @@ skynet = "skynet_plus.cli:main"
 [tool.setuptools.packages.find]
 include = ["skynet_plus*"]
 
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W style, F pyflakes, I import order, UP modern syntax, B likely bugs, SIM simplifications.
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["SIM105"]                     # try/except/pass with a comment is clearer than contextlib.suppress here
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E702", "E401", "SIM117", "E501"]   # tests are read top to bottom; one-line setups are fine
+"examples/*" = ["E402"]                          # the example puts the repo on the path first
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["skynet_plus/core", "skynet_plus/spi", "skynet_plus/sdk", "skynet_plus/conformance.py", "skynet_plus/cli.py",
+         "skynet_plus/providers/fake.py", "skynet_plus/providers/rules.py", "skynet_plus/providers/__init__.py"]
+ignore_missing_imports = true
+warn_unused_ignores = true

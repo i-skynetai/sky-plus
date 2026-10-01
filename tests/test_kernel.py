@@ -1,6 +1,9 @@
-import asyncio, unittest
+import asyncio
+import unittest
+
 from _path import *  # noqa
-from skynet_plus import Kernel, ResolutionError, ProviderError
+
+from skynet_plus import Kernel, ProviderError, ResolutionError
 from skynet_plus.core.provider import Health, Manifest
 from skynet_plus.core.registry import Registry
 from skynet_plus.providers import fake

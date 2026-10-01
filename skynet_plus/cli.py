@@ -9,7 +9,8 @@ from pathlib import Path
 
 from . import __version__
 from .core import miniyaml
-from .core.config import CONFIG_NAMES, find_config, load as load_config, parse_file, render_default
+from .core.config import CONFIG_NAMES, find_config, parse_file, render_default
+from .core.config import load as load_config
 from .core.errors import SkynetError
 from .core.kernel import Kernel
 from .core.profiles import PROFILES
@@ -92,7 +93,7 @@ def cmd_inspect(args: argparse.Namespace) -> int:
         print("no such run" if args.run_id else f"no runs recorded yet in {log}")
         return 1
     problems = verify(log)
-    run["chain"] = "ok" if not problems else problems
+    run["chain"] = problems if problems else "ok"
     print(json.dumps(run, indent=2, default=str))
     return 0 if not problems else 1
 

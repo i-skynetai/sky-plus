@@ -1,8 +1,8 @@
 """Where providers are found: explicit registration, plus entry points from installed packages."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from importlib import metadata
-from typing import Iterable
 
 from .provider import Manifest, Provider
 
@@ -27,11 +27,7 @@ class Registry:
     def discover(self, group: str = ENTRY_POINT_GROUP) -> list[str]:
         """Load every installed provider that advertises itself. Failures are recorded, not raised."""
         loaded: list[str] = []
-        try:
-            eps = metadata.entry_points(group=group)
-        except TypeError:  # very old importlib.metadata
-            eps = metadata.entry_points().get(group, [])  # type: ignore[attr-defined]
-        for ep in eps:
+        for ep in metadata.entry_points(group=group):
             try:
                 obj = ep.load()
                 classes = obj if isinstance(obj, (list, tuple)) else [obj]

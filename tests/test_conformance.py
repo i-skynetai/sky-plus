@@ -1,10 +1,13 @@
-import asyncio, unittest
+import asyncio
+import unittest
+
 from _path import *  # noqa
+
 from skynet_plus import Kernel
 from skynet_plus.conformance import check_provider
 from skynet_plus.core.provider import Manifest
 from skynet_plus.providers import fake, rules
-from skynet_plus.spi import MemoryProvider, MemoryItem
+from skynet_plus.spi import MemoryProvider
 
 
 class EveryBuiltInProviderConforms(unittest.TestCase):

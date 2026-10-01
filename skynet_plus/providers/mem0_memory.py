@@ -43,7 +43,8 @@ class Mem0Memory(MemoryProvider):
         self._error: str | None = None
         self.warnings: list[str] = []
         if not self.config.get("verbose"):
-            for name in ("mem0", "mem0.memory", "mem0.memory.main", "mem0.memory.utils", "mem0.llms", "mem0.embeddings"):
+            for name in ("mem0", "mem0.memory", "mem0.memory.main", "mem0.memory.utils",
+                         "mem0.llms", "mem0.embeddings"):
                 logging.getLogger(name).setLevel(logging.ERROR)
 
     def _default_config(self) -> dict:
@@ -53,9 +54,11 @@ class Mem0Memory(MemoryProvider):
         return {
             "llm": {"provider": "openai", "config": {"model": self.config.get("llm_model", "gpt-4o-mini"),
                                                      "temperature": float(self.config.get("llm_temperature", 0.1))}},
-            "embedder": {"provider": "openai", "config": {"model": self.config.get("embedding_model", "text-embedding-3-small")}},
-            "vector_store": {"provider": "qdrant", "config": {"path": str(path), "collection_name": self.config.get("collection", "skynet"),
-                                                              "on_disk": True}},
+            "embedder": {"provider": "openai",
+                         "config": {"model": self.config.get("embedding_model", "text-embedding-3-small")}},
+            "vector_store": {"provider": "qdrant",
+                             "config": {"path": str(path), "collection_name": self.config.get("collection", "skynet"),
+                                        "on_disk": True}},
         }
 
     def _ids(self, scope: dict | None) -> dict:
@@ -80,7 +83,8 @@ class Mem0Memory(MemoryProvider):
             return Health(ok=False, detail=f"Mem0 store unreachable: {type(exc).__name__}: {str(exc)[:200]}")
         llm = (self.mem0_config.get("llm") or {}).get("config", {}).get("model", "mem0 default")
         store = (self.mem0_config.get("vector_store") or {}).get("config", {}).get("path", "mem0 default")
-        return Health(ok=True, detail=f"Mem0 store reachable; extraction {'by ' + str(llm) if self.infer else 'off'}; vectors at {store}")
+        extraction = f"by {llm}" if self.infer else "off"
+        return Health(ok=True, detail=f"Mem0 store reachable; extraction {extraction}; vectors at {store}")
 
     async def remember(self, item: MemoryItem) -> str:
         ids = self._ids(item.scope)
@@ -92,7 +96,8 @@ class Mem0Memory(MemoryProvider):
             warning = f"fact extraction failed ({type(exc).__name__}: {str(exc)[:120]}); stored the text as written"
             self.warnings.append(warning)
             logging.getLogger(__name__).warning(warning)
-            result = await self._memory.add(item.content, metadata={**(item.metadata or {}), "raw": True}, infer=False, **ids)
+            result = await self._memory.add(item.content, metadata={**(item.metadata or {}), "raw": True},
+                                            infer=False, **ids)
         rows = result.get("results", []) if isinstance(result, dict) else (result or [])
         return str(rows[0].get("id", "")) if rows and isinstance(rows[0], dict) else ""
 

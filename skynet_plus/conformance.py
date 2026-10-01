@@ -9,14 +9,12 @@ same list in its own tests. Each check is one sentence; a failure returns that s
 """
 from __future__ import annotations
 
-import inspect
 from typing import Any
 
 from .core.contracts import AgentSpec, Result, Task, Tool
 from .core.provider import CAPABILITIES, Health, Manifest, Provider
 from .core.runrecord import RecorderHandle
-from .spi import (DecisionRequest, DecisionResult, EvalResult, MemoryItem, ModelResponse, Question,
-                  Verdict)
+from .spi import DecisionRequest, DecisionResult, EvalResult, MemoryItem, ModelResponse, Question, Verdict
 
 THIRD_PARTY_ROOTS = ("langgraph", "langchain", "litellm", "mem0", "openai", "anthropic",
                      "opentelemetry", "deepeval", "praxis")
@@ -194,7 +192,8 @@ async def _agent_runtime(p: Any, m: Manifest, services: Any) -> list[str]:
         return ["an agent-runtime check needs `services` with at least a model"]
     events: list[tuple[str, dict]] = []
     handle = RecorderHandle(lambda name, data: events.append((name, data)), "run-conformance")
-    spec = AgentSpec("conformance", "Answer briefly.", tools=(Tool.from_function(lambda input: {"echo": input}, name="echo"),))
+    echo = Tool.from_function(lambda input: {"echo": input}, name="echo")
+    spec = AgentSpec("conformance", "Answer briefly.", tools=(echo,))
     result = await p.run(spec, Task("use echo on this"), services, handle)
     if not isinstance(result, Result):
         return ["run() must return a Result"]

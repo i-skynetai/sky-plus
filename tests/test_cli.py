@@ -1,6 +1,12 @@
-import contextlib, io, os, tempfile, unittest
+import contextlib
+import io
+import os
+import tempfile
+import unittest
 from pathlib import Path
+
 from _path import *  # noqa
+
 from skynet_plus import cli
 
 
@@ -78,6 +84,7 @@ class TheCli(unittest.TestCase):
 class HintsAreTrue(unittest.TestCase):
     def test_every_hinted_extra_exists_in_pyproject(self):
         import re
+
         from skynet_plus.core.profiles import EXTRAS
         text = Path(__file__).resolve().parent.parent.joinpath("pyproject.toml").read_text()
         defined = set(re.findall(r"^(\w[\w-]*) = \[", text, re.M))

@@ -13,11 +13,12 @@ take a `Ready` row, claim it with the *Claim a feature* issue template, set the 
 ```bash
 python -m unittest discover -s tests          # the suite: standard library only, no install
 python examples/hello_agent.py                # the reference agent on the local profile
-pip install -e ".[langgraph]"                 # then the LangGraph tests run instead of skipping
+pip install -e ".[development,dev]"           # the adapters' tests run instead of skipping; ruff and mypy
+ruff check skynet_plus tests examples && mypy
 ```
 
-Python 3.11 or later; CI runs 3.11 to 3.14, and 3.12 with the `langgraph` extra. A green
-run here is the run that matters.
+Python 3.11 or later; CI runs the suite on 3.11 to 3.14, once more on 3.12 with the
+`langgraph` extra, and `ruff` plus `mypy` on 3.12. A green run here is the run that matters.
 
 ## What a change needs
 

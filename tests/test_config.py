@@ -1,6 +1,10 @@
-import os, tempfile, unittest
+import os
+import tempfile
+import unittest
 from pathlib import Path
+
 from _path import *  # noqa
+
 from skynet_plus.core.config import find_config, load, render_default
 from skynet_plus.core.errors import ConfigError
 
@@ -29,6 +33,16 @@ class ConfigLoads(unittest.TestCase):
             cfg = load(p)
             self.assertEqual(cfg.provider_id("agent-runtime"), "langgraph")
             self.assertEqual(cfg.capabilities["model"], {"provider": "litellm", "model": "gpt-4o-mini"})
+
+    def test_an_explicit_profile_ignores_sections_written_for_another(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "skynet.yaml"
+            p.write_text("profile: development\nmodel: {provider: litellm}\nrequirements:\n  human_approval: true\n")
+            cfg = load(p, profile="local")
+            self.assertEqual(cfg.provider_id("model"), "fake")                 # local's own stack
+            self.assertEqual(cfg.requirements, {"agent-runtime": {"hitl": True}})   # the file still applies
+            self.assertEqual(load(p, profile="development").provider_id("model"), "litellm")
+            self.assertEqual(load(p).provider_id("model"), "litellm")
 
     def test_no_file_means_the_named_profile(self):
         cfg = load(None, profile="development")

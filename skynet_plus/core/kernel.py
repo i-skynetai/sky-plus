@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from .. import __version__ as API_VERSION
-from .config import Config, load as load_config
+from .config import Config
+from .config import load as load_config
 from .contracts import Task
 from .errors import ProviderError, ResolutionError
 from .events import EventBus
@@ -14,7 +15,6 @@ from .provider import CAPABILITIES, Provider
 from .registry import Registry, default_registry
 from .resolver import Resolution, resolve
 from .runrecord import Recorder, new_record
-
 
 TRACED_METHODS = frozenset({"complete", "remember", "recall", "forget", "decide", "check", "evaluate",
                             "authorize", "start", "signal", "status", "search", "find_symbols",
@@ -50,22 +50,23 @@ class Traced:
 class Services:
     """The initialised providers, by capability. `services.model`, `services.get("memory")`."""
 
-    def __init__(self, providers: dict[str, Provider]) -> None:
-        self._providers = providers
+    def __init__(self, providers: dict[str, Any]) -> None:
+        self._providers: dict[str, Any] = providers
 
-    def get(self, capability: str) -> Provider | None:
+    def get(self, capability: str) -> Any:
+        """The provider for a capability, or None. Typed as Any: each capability has its own interface."""
         return self._providers.get(capability)
 
     def has(self, capability: str) -> bool:
         return capability in self._providers
 
-    def require(self, capability: str) -> Provider:
+    def require(self, capability: str) -> Any:
         try:
             return self._providers[capability]
         except KeyError:
             raise ProviderError(f"no provider configured for {capability!r}") from None
 
-    def __getattr__(self, name: str) -> Provider:
+    def __getattr__(self, name: str) -> Any:
         cap = name.replace("_", "-")
         if cap in self._providers:
             return self._providers[cap]
@@ -119,9 +120,15 @@ class Kernel:
     @classmethod
     def load(cls, path: str | Path | None = None, profile: str | None = None,
              overrides: dict | None = None, requirements: dict | None = None,
-             registry: Registry | None = None) -> "Kernel":
+             registry: Registry | None = None) -> Kernel:
         return cls(load_config(path, profile=profile, overrides=overrides, requirements=requirements),
                    registry=registry)
+
+    def _project(self) -> dict:
+        """What every provider is told about the project it runs in (the reserved `__skynet__` key)."""
+        source = self.config.source
+        config_dir = Path(source).resolve().parent if source else Path.cwd()
+        return {"config_dir": str(config_dir), "run_log": self.config.run_log, "profile": self.config.profile}
 
     # -- resolution -------------------------------------------------------------------
     def resolve(self, requirements: dict | None = None) -> Resolution:
@@ -138,7 +145,8 @@ class Kernel:
             provider = self.services.get(cap)
             if provider is None:
                 if any(feats.values()):
-                    problems.append(f"{cap}/-: dependency: required features {sorted(feats)} but no provider is running")
+                    problems.append(f"{cap}/-: dependency: required features {sorted(feats)} "
+                                    "but no provider is running")
                 continue
             missing = provider.manifest.missing(feats)
             if missing:
@@ -147,7 +155,7 @@ class Kernel:
                                 f"{sorted(f for f, v in provider.manifest.provides.items() if v)}")
         return problems
 
-    async def start(self, requirements: dict | None = None) -> "Kernel":
+    async def start(self, requirements: dict | None = None) -> Kernel:
         if self._started:
             unmet = self.unmet(requirements)
             if unmet:
@@ -156,10 +164,9 @@ class Kernel:
         resolution = self.resolve(requirements)
         if not resolution.ok:
             raise ResolutionError(resolution.problems)
-        providers: dict[str, Provider] = {}
+        providers: dict[str, Any] = {}
         try:
-            project = {"config_dir": str(Path(self.config.source).resolve().parent) if self.config.source else str(Path.cwd()),
-                       "run_log": self.config.run_log, "profile": self.config.profile}
+            project = self._project()
             for b in resolution.bindings:
                 instance = b.provider_cls({**b.config, "__skynet__": project})
                 try:
@@ -196,7 +203,7 @@ class Kernel:
         self._started = False
         self.events.emit("kernel.stopped")
 
-    async def __aenter__(self) -> "Kernel":
+    async def __aenter__(self) -> Kernel:
         return await self.start()
 
     async def __aexit__(self, *exc: Any) -> None:
@@ -231,9 +238,7 @@ class Kernel:
                 if b is None:
                     report.rows.append(DoctorRow(cap, pid, "ERROR", "resolved but unbound"))
                     continue
-                project = {"config_dir": str(Path(self.config.source).resolve().parent) if self.config.source else str(Path.cwd()),
-                           "run_log": self.config.run_log, "profile": self.config.profile}
-                instance = b.provider_cls({**b.config, "__skynet__": project})
+                instance = b.provider_cls({**b.config, "__skynet__": self._project()})
                 try:
                     await instance.initialize()
                     health = await instance.health()

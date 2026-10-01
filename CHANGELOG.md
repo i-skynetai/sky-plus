@@ -28,6 +28,13 @@ The base product: what an agentic team needs on day one, so it writes only the a
   runtimes. The OpenTelemetry console exporter is opt-in; the default exports to OTLP
   when an endpoint is set and otherwise prints nothing. Providers receive the project
   context (config folder, run log, profile) under the reserved `__skynet__` key.
+- **Release polish.** A file's provider sections apply only to the profile the file
+  names, so `Agent(profile="local")` or `skynet doctor --profile local` means that
+  profile's own stack even when a development `skynet.yaml` is present. The example takes
+  a profile argument and prints a labelled result. `ruff` and `mypy` are configured, clean,
+  and run in CI. README rewritten for a reader, with an architecture diagram, a terminal
+  image, badges, a sixty-second path and a five-minute path; `docs/architecture.md` with
+  three rendered diagrams. `.env` files are ignored.
 - **Not in 1.0, by decision.** The decision capability (Praxis, System-1 routing),
   streaming, resume after human approval, a second runtime, the production profile's
   providers. See `ROADMAP.md`.

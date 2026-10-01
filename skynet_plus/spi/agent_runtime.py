@@ -17,6 +17,6 @@ class AgentRuntimeProvider(Provider):
     `services.memory`, ...). It records what it did through `recorder`, append-only.
     """
 
-    async def run(self, spec: AgentSpec, task: Task, services: "Services",
+    async def run(self, spec: AgentSpec, task: Task, services: Services,
                   recorder: RecorderHandle) -> Result:
         raise NotImplementedError

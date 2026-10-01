@@ -9,8 +9,9 @@ printed). The global tracer provider is left alone unless `set_global: true`.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
@@ -65,7 +66,9 @@ class OpenTelemetryTelemetry(TelemetryProvider):
     async def health(self) -> Health:
         if self._tracer is None:
             return Health(ok=False, detail="not initialised")
-        hint = "; set OTEL_EXPORTER_OTLP_ENDPOINT or `exporter: console` to see spans" if self.exporter_name == "none" else ""
+        hint = ""
+        if self.exporter_name == "none":
+            hint = "; set OTEL_EXPORTER_OTLP_ENDPOINT or `exporter: console` to see spans"
         return Health(ok=True, detail=f"exporter {self.exporter_name}; service {self.service_name}{hint}")
 
     @contextmanager

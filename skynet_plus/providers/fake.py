@@ -11,16 +11,30 @@ import json
 import math
 import re
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
-from typing import Any, Iterator
+from typing import Any
 
 from ..core.contracts import AgentSpec, Result, Step, Task
 from ..core.provider import Health, Manifest
 from ..core.runrecord import RecorderHandle
-from ..spi import (AgentRuntimeProvider, Authorization, AuthorizationProvider, DecisionProvider,
-                   DecisionRequest, DecisionResult, EvalResult, EvaluationProvider,
-                   GuardrailProvider, MemoryItem, MemoryProvider, ModelProvider, ModelResponse,
-                   TelemetryProvider, Verdict)
+from ..spi import (
+    AgentRuntimeProvider,
+    Authorization,
+    AuthorizationProvider,
+    DecisionProvider,
+    DecisionRequest,
+    DecisionResult,
+    EvalResult,
+    EvaluationProvider,
+    GuardrailProvider,
+    MemoryItem,
+    MemoryProvider,
+    ModelProvider,
+    ModelResponse,
+    TelemetryProvider,
+    Verdict,
+)
 
 VERSION = "1.0.0"
 _WORD = re.compile(r"[a-z0-9]+")
@@ -80,8 +94,8 @@ class FakeModel(ModelProvider):
             else:
                 structured = {"action": "final", "answer": text}
             return ModelResponse(text=json.dumps(structured), model="fake-1", usage=usage, structured=structured)
-        structured = {"answer": text} if schema else None
-        return ModelResponse(text=text, model="fake-1", usage=usage, structured=structured)
+        plain: dict | None = {"answer": text} if schema else None
+        return ModelResponse(text=text, model="fake-1", usage=usage, structured=plain)
 
 
 class FakeMemory(MemoryProvider):
@@ -140,7 +154,7 @@ class FakeDecision(DecisionProvider):
             total = sum(weights.values())
             dist = {k: round(w / total, 4) for k, w in weights.items()}
             confidence = _entropy_confidence(dist)
-            ranked = sorted(dist, key=dist.get, reverse=True)
+            ranked = sorted(dist, key=lambda k: dist[k], reverse=True)
             if q.type == "rank":
                 answer: Any = ranked
             elif q.type == "boolean":
@@ -209,7 +223,7 @@ class FakeTelemetry(TelemetryProvider):
 
     @contextmanager
     def span(self, name: str, attributes: dict | None = None) -> Iterator[dict]:
-        entry = {"name": name, "attributes": dict(attributes or {}), "started": time.time()}
+        entry: dict[str, Any] = {"name": name, "attributes": dict(attributes or {}), "started": time.time()}
         self.spans.append(entry)
         try:
             yield entry

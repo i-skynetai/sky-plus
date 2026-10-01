@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from importlib import metadata
 from typing import Any, TypedDict
 
-from langchain_core.runnables import RunnableConfig   # a LangGraph dependency
+from langchain_core.runnables import RunnableConfig  # a LangGraph dependency
 from langgraph.graph import END, START, StateGraph
 
 try:

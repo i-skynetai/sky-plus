@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import unittest
-from typing import Optional
+
 from _path import *  # noqa
-from skynet_plus import Tool, tool, Result, Task, ConfigError
+
+from skynet_plus import ConfigError, Result, Task, Tool, tool
 from skynet_plus.core.contracts import normalise_requirements
 
 
