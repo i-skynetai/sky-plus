@@ -1,5 +1,4 @@
-import asyncio, tempfile, unittest
-from pathlib import Path
+import asyncio, unittest
 from _path import *  # noqa
 from skynet_plus import Kernel, ResolutionError, ProviderError
 from skynet_plus.core.provider import Health, Manifest
@@ -26,15 +25,27 @@ class TheKernelStartsAndStops(unittest.TestCase):
         self.assertIn("streaming", str(cm.exception))
         self.assertFalse(k.services.has("model"))
 
+    def test_a_running_kernel_still_checks_a_new_requirement(self):
+        async def go():
+            async with Kernel.load(None, profile="local") as k:
+                await k.start()                                   # no-op
+                with self.assertRaises(ResolutionError) as cm:
+                    await k.start({"agent-runtime": {"streaming": True}})
+                self.assertIn("streaming", str(cm.exception))
+                with self.assertRaises(ResolutionError):
+                    await k.start({"authorization": {"allow": True}})
+                self.assertTrue(k.services.has("model"))          # still running
+        asyncio.run(go())
+
     def test_an_unhealthy_provider_stops_the_start_and_closes_the_rest(self):
         closed = []
 
-        class Sick(fake.FakeTelemetry):          # telemetry starts last in the local profile
+        class Sick(fake.FakeTelemetry):
             manifest = Manifest(id="sick", capability="telemetry", version="0")
             async def health(self):
                 return Health(ok=False, detail="no pulse")
 
-        class Watch(fake.FakeModel):             # model starts first; its close must be called
+        class Watch(fake.FakeModel):
             manifest = Manifest(id="watch", capability="model", version="0")
             async def close(self):
                 closed.append("model")
@@ -57,14 +68,37 @@ class DoctorReports(unittest.TestCase):
         self.assertEqual(by["payment"].status, "UNCONFIGURED")
         self.assertIn("verdict: OK", report.render())
 
-    def test_development_without_extras_lists_every_missing_provider(self):
+    def test_development_without_extras_lists_the_missing_providers(self):
         report = asyncio.run(Kernel.load(None, profile="development").doctor())
         self.assertFalse(report.ok)
         missing = {r.capability: r for r in report.rows if r.status == "MISSING"}
-        # the model row is missing on every interpreter in CI: no LiteLLM adapter exists yet
         self.assertIn("model", missing)
         self.assertIn('skynet-plus[litellm]', missing["model"].detail)
         self.assertIn("NOT READY", report.render())
+
+    def test_doctor_agrees_with_start(self):
+        """Doctor says OK exactly when start would succeed, on the three SP-004 cases."""
+        async def go(requirements=None, **overrides):
+            k = Kernel.load(None, profile="local", overrides=overrides or None)
+            report = await k.doctor(requirements)
+            try:
+                await k.start(requirements); started = True
+            except Exception:
+                started = False
+            finally:
+                await k.stop()
+            return report.ok, started
+        self.assertEqual(asyncio.run(go()), (True, True))
+        self.assertEqual(asyncio.run(go({"agent-runtime": {"streaming": True}})), (False, False))
+        self.assertEqual(asyncio.run(go({"authorization": {"allow": True}})), (False, False))
+
+        class Odd(ModelProvider):
+            manifest = Manifest(id="odd", capability="model", version="0", skynet_api="^1")
+        reg = Registry(); reg.register_all(fake.ALL); reg.register(Odd)
+        k = Kernel.load(None, profile="local", overrides={"model": "odd"}, registry=reg)
+        report = asyncio.run(k.doctor())
+        self.assertFalse(report.ok)
+        self.assertEqual(next(r for r in report.rows if r.capability == "model").status, "INCOMPATIBLE")
 
     def test_doctor_never_raises_on_a_broken_provider(self):
         class Boom(ModelProvider):

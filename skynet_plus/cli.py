@@ -9,13 +9,13 @@ from pathlib import Path
 
 from . import __version__
 from .core import miniyaml
-from .core.config import CONFIG_NAMES, find_config, parse_file, render_default
+from .core.config import CONFIG_NAMES, find_config, load as load_config, parse_file, render_default
 from .core.errors import SkynetError
 from .core.kernel import Kernel
 from .core.profiles import PROFILES
 from .core.provider import CAPABILITIES
 from .core.registry import default_registry
-from .core.runrecord import find_run
+from .core.runrecord import find_run, verify
 from .sdk.agent import Agent
 
 
@@ -66,8 +66,8 @@ def cmd_providers(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    agent = Agent(name=args.name, instructions=args.instructions, config=args.config, profile=args.profile)
     try:
+        agent = Agent(name=args.name, instructions=args.instructions, config=args.config, profile=args.profile)
         result = agent.run_sync(args.task)
     except SkynetError as exc:
         print(f"cannot run: {exc}")
@@ -86,12 +86,35 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_inspect(args: argparse.Namespace) -> int:
     kernel = Kernel.load(args.config, profile=args.profile)
+    log = Path(kernel.config.run_log)
+    run = find_run(log, args.run_id)
+    if run is None:
+        print("no such run" if args.run_id else f"no runs recorded yet in {log}")
+        return 1
+    problems = verify(log)
+    run["chain"] = "ok" if not problems else problems
+    print(json.dumps(run, indent=2, default=str))
+    return 0 if not problems else 1
+
+
+def cmd_eval(args: argparse.Namespace) -> int:
+    kernel = Kernel.load(args.config, profile=args.profile)
     run = find_run(Path(kernel.config.run_log), args.run_id)
     if run is None:
         print("no such run" if args.run_id else "no runs recorded yet")
         return 1
-    print(json.dumps(run, indent=2, default=str))
-    return 0
+
+    async def go():
+        async with kernel:
+            evaluator = kernel.services.get("evaluation")
+            if evaluator is None:
+                print("no evaluation provider configured")
+                return 2
+            result = await evaluator.evaluate(run, args.metric or None)
+            print(json.dumps({"run_id": run["run_id"], "scores": result.scores, "passed": result.passed,
+                              "detail": result.detail}, indent=2, default=str))
+            return 0 if result.passed in (True, None) else 1
+    return asyncio.run(go())
 
 
 def cmd_swap(args: argparse.Namespace) -> int:
@@ -103,9 +126,17 @@ def cmd_swap(args: argparse.Namespace) -> int:
     if source is None:
         print(f"no config file found ({', '.join(CONFIG_NAMES)}); run `skynet init` first")
         return 2
-    raw = parse_file(source)
-    raw[args.capability] = {"provider": args.provider}
-    kernel = Kernel.load(source, overrides={args.capability: {"provider": args.provider}})
+    if source.suffix == ".json":
+        raw = parse_file(source)
+        raw.setdefault(args.capability, {})
+        if not isinstance(raw[args.capability], dict):
+            raw[args.capability] = {}
+        raw[args.capability]["provider"] = args.provider
+        new_text = json.dumps(raw, indent=2) + "\n"
+    else:
+        new_text = miniyaml.set_key(source.read_text(), args.capability, "provider", args.provider)
+    # check exactly the text that would be written
+    kernel = Kernel(load_config(source, text=new_text))
     resolution = kernel.resolve()
     blocking = [p for p in resolution.problems if p.capability == args.capability]
     if blocking and not args.force:
@@ -114,7 +145,7 @@ def cmd_swap(args: argparse.Namespace) -> int:
             print(f"  - {p}")
         print("use --force to write it anyway")
         return 1
-    source.write_text(miniyaml.dumps(raw) if source.suffix != ".json" else json.dumps(raw, indent=2))
+    source.write_text(new_text)
     print(f"{args.capability}: provider -> {args.provider} (written to {source})")
     return 0
 
@@ -131,7 +162,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_init)
 
     for name, fn, help_ in (("doctor", cmd_doctor, "check every configured provider before running"),
-                            ("inspect", cmd_inspect, "print a recorded run")):
+                            ("inspect", cmd_inspect, "print a recorded run and verify the log's chain"),
+                            ("eval", cmd_eval, "score a recorded run with the configured evaluator")):
         s = sub.add_parser(name, help=help_)
         s.add_argument("--config")
         s.add_argument("--profile")
@@ -139,6 +171,8 @@ def build_parser() -> argparse.ArgumentParser:
             s.add_argument("--json", action="store_true")
         else:
             s.add_argument("run_id", nargs="?")
+        if name == "eval":
+            s.add_argument("--metric", action="append")
         s.set_defaults(fn=fn)
 
     s = sub.add_parser("providers", help="list installed providers and known profiles")

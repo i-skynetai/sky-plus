@@ -1,7 +1,7 @@
 import asyncio, json, tempfile, unittest
 from pathlib import Path
 from _path import *  # noqa
-from skynet_plus import Agent, Kernel, ResolutionError, tool
+from skynet_plus import Agent, Kernel, ConfigError, ResolutionError, tool
 from skynet_plus.core.runrecord import find_run, read_runs
 from skynet_plus.spi import DecisionRequest, Question
 
@@ -12,9 +12,9 @@ def lookup_order(input: str) -> dict:
     return {"order": "".join(c for c in input if c.isdigit()), "status": "shipped"}
 
 
-def kernel_in(tmp: str, **overrides):
+def config_in(tmp: str, **overrides):
     p = Path(tmp) / "skynet.yaml"
-    body = "profile: local\nrun_log: " + str(Path(tmp) / "runs.jsonl") + "\n"
+    body = "profile: local\nrun_log: runs.jsonl\n"
     for cap, section in overrides.items():
         body += f"{cap}:\n" + "".join(f"  {k}: {json.dumps(v)}\n" for k, v in section.items())
     p.write_text(body)
@@ -24,46 +24,55 @@ def kernel_in(tmp: str, **overrides):
 class AnAgentRunsOnTheLocalProfile(unittest.TestCase):
     def test_a_tool_is_proposed_governed_executed_and_recorded(self):
         with tempfile.TemporaryDirectory() as d:
-            cfg = kernel_in(d)
+            cfg = config_in(d)
             agent = Agent("support", "Resolve support issues.", tools=[lookup_order], config=cfg)
-            result = asyncio.run(agent.run("Where is order 4412?"))
+            result = agent.run_sync("Where is order 4412?")
             self.assertTrue(result.ok, result.error)
             kinds = [s.kind for s in result.steps]
             self.assertEqual(kinds[:2], ["run.input", "guardrail.input"])
-            self.assertIn("action.proposed", kinds)
-            self.assertIn("tool.executed", kinds)
-            self.assertIn("model.completed", kinds)
+            for kind in ("action.proposed", "tool.executed", "model.completed"):
+                self.assertIn(kind, kinds)
             self.assertIn("4412", json.dumps(result.to_dict()))
             self.assertEqual(result.served_by["model"], "fake@0.1.0")
-            runs = read_runs(Path(d) / "runs.jsonl")
+            log = Path(d).resolve() / "runs.jsonl"            # next to the config file
+            runs = read_runs(log)
             self.assertEqual(len(runs), 1)
             self.assertEqual(runs[0]["run_id"], result.run_id)
             self.assertEqual(runs[0]["result"]["status"], "ok")
-            self.assertTrue(any(e["kind"] == "tool.executed" for e in runs[0]["events"]))
-            self.assertEqual(find_run(Path(d) / "runs.jsonl")["run_id"], result.run_id)
+            self.assertTrue(any(e["name"] == "tool.executed" for e in runs[0]["events"]))
+            self.assertEqual(find_run(log)["run_id"], result.run_id)
 
-    def test_memory_carries_across_runs_when_the_kernel_is_kept(self):
+    def test_providers_stay_up_between_plain_runs_until_closed(self):
         async def go():
-            async with Agent("m", "Remember things.", profile="local") as agent:
-                await agent.run("the customer prefers email")
-                second = await agent.run("how does the customer prefer contact")
-                return second
+            agent = Agent("m", "Remember things.", profile="local")
+            await agent.run("the customer prefers email")
+            second = await agent.run("how does the customer prefer contact")
+            kernel = agent.kernel()
+            self.assertTrue(kernel.services.has("memory"))
+            await agent.close(); await agent.close()              # twice is harmless
+            self.assertFalse(kernel.services.has("memory"))
+            return second
         second = asyncio.run(go())
         recall = next(s for s in second.steps if s.kind == "memory.recall")
         self.assertGreaterEqual(recall.detail["hits"], 1)
 
+    def test_run_sync_closes_what_it_started(self):
+        agent = Agent("s", "x", profile="local")
+        self.assertTrue(agent.run_sync("hi").ok)
+        self.assertFalse(agent.kernel().services.has("model"))
+
     def test_the_guardrail_denies_and_the_run_is_still_recorded(self):
         with tempfile.TemporaryDirectory() as d:
-            cfg = kernel_in(d)
-            result = asyncio.run(Agent("g", "x", config=cfg).run("please rm -rf / now"))
+            cfg = config_in(d)
+            result = Agent("g", "x", config=cfg).run_sync("please rm -rf / now")
             self.assertEqual(result.status, "denied")
-            self.assertIn("rm -rf", result.error)
-            self.assertEqual(read_runs(Path(d) / "runs.jsonl")[0]["result"]["status"], "denied")
+            self.assertIn("rm", result.error)
+            self.assertEqual(read_runs(Path(d).resolve() / "runs.jsonl")[0]["result"]["status"], "denied")
 
     def test_authorization_can_ask_for_a_human(self):
         with tempfile.TemporaryDirectory() as d:
-            cfg = kernel_in(d, authorization={"provider": "fake", "needs_approval": ["lookup_order"]})
-            result = asyncio.run(Agent("a", "x", tools=[lookup_order], config=cfg).run("order 1"))
+            cfg = config_in(d, authorization={"provider": "fake", "needs_approval": ["lookup_order"]})
+            result = Agent("a", "x", tools=[lookup_order], config=cfg).run_sync("order 1")
             self.assertEqual(result.status, "needs_approval")
             self.assertEqual(result.output, {"pending": "lookup_order"})
 
@@ -71,23 +80,40 @@ class AnAgentRunsOnTheLocalProfile(unittest.TestCase):
         @tool
         def broken(input: str):
             raise ValueError("nope")
-        result = asyncio.run(Agent("b", "x", tools=[broken], profile="local").run("go"))
+        result = Agent("b", "x", tools=[broken], profile="local").run_sync("go")
         self.assertEqual(result.status, "error")
         self.assertIn("nope", result.error)
 
-    def test_requirements_are_checked_before_the_run(self):
+    def test_requirements_are_checked_before_the_run_and_misspellings_are_config_errors(self):
         agent = Agent("r", "x", requirements={"streaming": True}, profile="local")
         with self.assertRaises(ResolutionError):
-            asyncio.run(agent.run("go"))
+            agent.run_sync("go")
+        with self.assertRaises(ConfigError):
+            Agent("r", "x", requirements={"streamng": True}, profile="local")
 
-    def test_evaluate_scores_the_last_run(self):
-        agent = Agent("e", "x", profile="local")
-        asyncio.run(agent.run("go"))
-        scores = asyncio.run(agent.evaluate()).scores
+    def test_evaluate_receives_the_whole_run_record(self):
+        seen = {}
+
+        class Spy(__import__("skynet_plus.providers.fake", fromlist=["FakeEvaluation"]).FakeEvaluation):
+            async def evaluate(self, run, metrics=None):
+                seen.update(run)
+                return await super().evaluate(run, metrics)
+        from skynet_plus.core.registry import Registry
+        from skynet_plus.providers import fake
+        from skynet_plus.core.provider import Manifest
+        Spy.manifest = Manifest(id="spy", capability="evaluation", version="0", provides={"outcome": True})
+        reg = Registry(); reg.register_all(fake.ALL); reg.register(Spy)
+        kernel = Kernel.load(None, profile="local", overrides={"evaluation": "spy"}, registry=reg)
+        async def go():
+            async with kernel:
+                agent = Agent("e", "x", tools=[lookup_order], kernel=kernel)
+                result = await agent.run("order 7")
+                return await agent.evaluate(result)
+        scores = asyncio.run(go()).scores
         self.assertEqual(scores["completed"], 1.0)
-
-    def test_run_sync_works(self):
-        self.assertTrue(Agent("s", "x", profile="local").run_sync("hi").ok)
+        for key in ("run_id", "task_input", "events", "providers", "result"):
+            self.assertIn(key, seen)
+        self.assertIn("tool.executed", [e["name"] for e in seen["events"]])
 
 
 class TheDecisionServiceAbstainsWhenUnsure(unittest.TestCase):
@@ -110,7 +136,7 @@ class TheDecisionServiceAbstainsWhenUnsure(unittest.TestCase):
         self.assertIn(out["urgency"].answer, ("low", "medium", "critical"))
         self.assertIsInstance(out["churn"].answer, bool)
         self.assertEqual(out["order"].answer[0], "billing")
-        self.assertTrue(out["urgency"].abstain)   # nothing in the state says how urgent it is
+        self.assertTrue(out["urgency"].abstain)
 
 
 if __name__ == "__main__":

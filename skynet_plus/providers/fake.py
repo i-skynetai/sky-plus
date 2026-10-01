@@ -247,6 +247,9 @@ class FakeAgentRuntime(AgentRuntimeProvider):
             if not verdict.allowed:
                 return Result(task.id, None, status="denied", steps=steps, served_by=served,
                               error=verdict.reason)
+            if verdict.action == "modify":
+                task = Task(verdict.content, id=task.id, metadata=task.metadata)
+                step("guardrail.modified", stage="input")
 
         context: list[str] = []
         memory = services.get("memory")
@@ -258,13 +261,17 @@ class FakeAgentRuntime(AgentRuntimeProvider):
         tool_result: Any = None
         if spec.tools:
             chosen = next((t for t in spec.tools if t.name.lower() in task.text.lower()), spec.tools[0])
-            step("action.proposed", tool=chosen.name, args={"input": task.text})
+            args: dict[str, Any] = {"input": task.text}
+            step("action.proposed", tool=chosen.name, args=args)
             if guardrail:
-                verdict = await guardrail.check({"tool": chosen.name, "input": task.text}, "tool")
+                verdict = await guardrail.check({"tool": chosen.name, "args": args}, "tool")
                 step("guardrail.tool", action=verdict.action, reason=verdict.reason)
                 if not verdict.allowed:
                     return Result(task.id, None, status="denied", steps=steps, served_by=served,
                                   error=verdict.reason)
+                if verdict.action == "modify" and isinstance(verdict.content, dict):
+                    args = dict(verdict.content.get("args", verdict.content))
+                    step("guardrail.modified", stage="tool", args=args)
             auth = services.get("authorization")
             if auth:
                 decision = await auth.authorize(chosen.name, {"agent": spec.name, "task": task.id})
@@ -276,7 +283,7 @@ class FakeAgentRuntime(AgentRuntimeProvider):
                     return Result(task.id, None, status="denied", steps=steps, served_by=served,
                                   error=decision.reason)
             try:
-                tool_result = chosen.invoke(input=task.text, task=task)
+                tool_result = chosen.invoke(task=task, **args)
                 if inspect.isawaitable(tool_result):
                     tool_result = await tool_result
                 step("tool.executed", tool=chosen.name, result=tool_result)
@@ -296,20 +303,24 @@ class FakeAgentRuntime(AgentRuntimeProvider):
             usage[k] += response.usage.get(k, 0)
         step("model.completed", model=response.model, usage=response.usage)
 
+        answer = response.text
         if guardrail:
-            verdict = await guardrail.check(response.text, "output")
+            verdict = await guardrail.check(answer, "output")
             step("guardrail.output", action=verdict.action, reason=verdict.reason)
             if not verdict.allowed:
                 return Result(task.id, None, status="denied", steps=steps, served_by=served,
                               usage=usage, error=verdict.reason)
+            if verdict.action == "modify":
+                answer = verdict.content
+                step("guardrail.modified", stage="output")
 
         if memory:
-            await memory.remember(MemoryItem(f"{task.text} -> {response.text}", scope={"agent": spec.name}))
+            await memory.remember(MemoryItem(f"{task.text} -> {answer}", scope={"agent": spec.name}))
             step("memory.remember")
         telemetry = services.get("telemetry")
         if telemetry:
             await telemetry.emit("agent.completed", agent=spec.name, task=task.id)
-        return Result(task.id, response.text, status="ok", steps=steps, usage=usage, served_by=served)
+        return Result(task.id, answer, status="ok", steps=steps, usage=usage, served_by=served)
 
 
 ALL = [FakeAgentRuntime, FakeModel, FakeMemory, FakeDecision, FakeGuardrail,

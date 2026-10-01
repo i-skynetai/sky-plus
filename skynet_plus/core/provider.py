@@ -20,10 +20,17 @@ def version_in_range(version: str, spec: str) -> bool:
     """`spec` like ">=0.1,<2". Empty spec means any version."""
     v = _vtuple(version)
     for clause in filter(None, (c.strip() for c in spec.split(","))):
-        m = re.match(r"(>=|<=|==|>|<|!=)\s*([\d.]+)", clause)
+        m = re.fullmatch(r"(~=|>=|<=|==|>|<|!=)\s*v?(\d+(?:\.\d+)*)(?:\.\*)?", clause)
         if not m:
-            raise ValueError(f"bad version clause {clause!r}")
+            raise ValueError(f"cannot read version clause {clause!r} (use >=, <=, ==, !=, <, > or ~=)")
         op, bound = m.group(1), _vtuple(m.group(2))
+        if op == "~=":                     # compatible release: >= bound and same leading components
+            if len(bound) < 2:
+                raise ValueError(f"'~=' needs at least two components, got {clause!r}")
+            vv = v[:len(bound)] + (0,) * max(0, len(bound) - len(v))
+            if not (vv >= bound and vv[:len(bound) - 1] == bound[:-1]):
+                return False
+            continue
         # compare on the bound's precision so ">=0.1" accepts 0.1.0
         vv = v[:len(bound)] + (0,) * max(0, len(bound) - len(v))
         ok = {">=": vv >= bound, "<=": vv <= bound, "==": vv == bound,

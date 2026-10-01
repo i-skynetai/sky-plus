@@ -24,6 +24,7 @@ async def main() -> None:
     print("served by:", result.served_by)
     print("steps:", [s.kind for s in result.steps])
     print("\nevaluation:", (await agent.evaluate(result)).scores)
+    await agent.close()                                  # providers stay up until closed
 
 
 if __name__ == "__main__":

@@ -71,27 +71,27 @@ record it can trust. Nothing provider-specific in the application's code.
 |---|---|---|---|---|---|---|
 | SP-020 | [How adapters ship](#sp-020) | packaging | P1 | S | Done (0.2.0) | maintainer |
 | SP-022 | [LangGraph agent runtime](#sp-022) | providers | P1 | L | Done (0.2.0) | maintainer |
-| SP-001 | [Event lines cannot pose as runs](#sp-001) | run record | P0 | S | Planned (1.0) | maintainer |
-| SP-002 | [A tamper-evident run record](#sp-002) | run record | P0 | M | Planned (1.0) — decided: hash chain | maintainer |
-| SP-003 | [One-line `{key: value}` maps in `skynet.yaml`](#sp-003) | config | P0 | M | Planned (1.0) | maintainer |
-| SP-004 | [Requirements checked the same way everywhere](#sp-004) | kernel | P0 | M | Planned (1.0) | maintainer |
-| SP-005 | [Config mistakes are config errors](#sp-005) | config | P0 | S | Planned (1.0) | maintainer |
-| SP-006 | [`skynet swap` keeps the rest of the file](#sp-006) | cli | P0 | M | Planned (1.0) | maintainer |
-| SP-007 | [Guardrails see nested content, and `modify` sticks](#sp-007) | guardrail | P0 | M | Planned (1.0) | maintainer |
-| SP-008 | [Evaluation gets the whole run record](#sp-008) | sdk | P0 | S | Planned (1.0) | maintainer |
-| SP-009 | [The run log sits next to the config file](#sp-009) | run record | P0 | S | Planned (1.0) | maintainer |
-| SP-010 | [Install hints that are true](#sp-010) | doctor | P0 | S | Planned (1.0) | maintainer |
-| SP-023 | [Tool schemas from type hints](#sp-023) | sdk | P1 | S | Planned (1.0) | maintainer |
-| SP-024 | [Providers stay up between runs](#sp-024) | sdk | P1 | M | Planned (1.0) — decided: kept up until `close()` | maintainer |
+| SP-001 | [Event lines cannot pose as runs](#sp-001) | run record | P0 | S | Done (0.2.0) | maintainer |
+| SP-002 | [A tamper-evident run record](#sp-002) | run record | P0 | M | Done (0.2.0) | maintainer |
+| SP-003 | [One-line `{key: value}` maps in `skynet.yaml`](#sp-003) | config | P0 | M | Done (0.2.0) | maintainer |
+| SP-004 | [Requirements checked the same way everywhere](#sp-004) | kernel | P0 | M | Done (0.2.0) | maintainer |
+| SP-005 | [Config mistakes are config errors](#sp-005) | config | P0 | S | Done (0.2.0) | maintainer |
+| SP-006 | [`skynet swap` keeps the rest of the file](#sp-006) | cli | P0 | M | Done (0.2.0) | maintainer |
+| SP-007 | [Guardrails see nested content, and `modify` sticks](#sp-007) | guardrail | P0 | M | Done (0.2.0) | maintainer |
+| SP-008 | [Evaluation gets the whole run record](#sp-008) | sdk | P0 | S | Done (0.2.0) | maintainer |
+| SP-009 | [The run log sits next to the config file](#sp-009) | run record | P0 | S | Done (0.2.0) | maintainer |
+| SP-010 | [Install hints that are true](#sp-010) | doctor | P0 | S | Done (0.2.0) | maintainer |
+| SP-023 | [Tool schemas from type hints](#sp-023) | sdk | P1 | S | Done (0.2.0) | maintainer |
+| SP-024 | [Providers stay up between runs](#sp-024) | sdk | P1 | M | Done (0.2.0) | maintainer |
 | SP-021 | [LiteLLM model provider](#sp-021) | providers | P1 | M | Planned (1.0) | maintainer |
 | SP-030 | [Mem0 memory provider](#sp-030) | providers | P1 | M | Planned (1.0) | maintainer |
 | SP-033 | [OpenTelemetry spans for every provider call](#sp-033) | telemetry | P1 | M | Planned (1.0) | maintainer |
 | SP-034 | [DeepEval provider and `skynet eval`](#sp-034) | evaluation | P1 | M | Planned (1.0) | maintainer |
-| SP-040 | [Conformance suite](#sp-040) | conformance | P1 | L | Planned (1.0) — the shared contract tests the adapters above run | maintainer |
-| SP-041 | [Providers from other packages](#sp-041) | registry | P2 | M | Planned (1.0) | maintainer |
-| SP-060 | [The architecture pack as Markdown](#sp-060) | docs | P2 | S | Planned (1.0) | maintainer |
-| SP-061 | [Tests that leave no trace](#sp-061) | tests | P2 | S | Planned (1.0) | maintainer |
-| SP-062 | [Licence, contributing guide and a repository](#sp-062) | project | P1 | S | Planned (1.0) | maintainer |
+| SP-040 | [Conformance suite](#sp-040) | conformance | P1 | L | Done (0.2.0) | maintainer |
+| SP-041 | [Providers from other packages](#sp-041) | registry | P2 | M | Done (0.2.0) | maintainer |
+| SP-060 | [The architecture pack as Markdown](#sp-060) | docs | P2 | S | Done (0.2.0) | maintainer |
+| SP-061 | [Tests that leave no trace](#sp-061) | tests | P2 | S | Done (0.2.0) | maintainer |
+| SP-062 | [Licence, contributing guide and a repository](#sp-062) | project | P1 | S | Done (0.2.0) | maintainer |
 
 ### After 1.0 — published with the base, open for claiming then
 
@@ -219,13 +219,13 @@ in:* `core/profiles.py` — `EXTRAS`, `install_hint`.
 
 The architecture pack's own exit test for this stage: the reference agent runs on
 LangGraph without the application importing LangGraph
-([03 Plan](Skynet_Plus_Final_Architecture_Pack/03_Plan.docx)).
+([03 Plan](docs/architecture/03-plan.md)).
 
 <a id="sp-020"></a>**SP-020 — How adapters ship.** Today the real providers are pip
 extras that install only a third-party library. The architecture pack proposes one
 package per provider, found through *entry points* (the standard way an installed Python
 package advertises a plug-in) — see
-[06 Development](Skynet_Plus_Final_Architecture_Pack/06_Development.docx). *Decision
+[06 Development](docs/architecture/06-development.md). *Decision
 needed:* adapters inside `skynet_plus/providers/`, imported only when their extra is
 installed, or separate `skynet-provider-*` packages. The choice sets where the LangGraph
 and LiteLLM code lives, how it is versioned, and what doctor's hint says. It blocks
@@ -300,7 +300,7 @@ decision tests in `tests/test_agent.py` pass against Praxis as well as the fake;
 <a id="sp-032"></a>**SP-032 — System-1 / System-2 routing.** The architecture's central
 idea: bounded, frequent decisions go to the decision provider (System-1); ambiguous or
 new ones go to the model (System-2) — see
-[05 Design](Skynet_Plus_Final_Architecture_Pack/05_Design.docx). Today the runtime never
+[05 Design](docs/architecture/05-design.md). Today the runtime never
 calls the decision service; a run's steps contain no decision step. *Decision needed:*
 how an agent declares a decision point, and the routing rule — confidence threshold,
 abstain, novelty. *Done when:* a declared decision with a confident System-1 answer never
@@ -369,7 +369,7 @@ PydanticAI. *Done when:* the reference agent runs on both with no code change, a
 
 <a id="sp-060"></a>**SP-060 — The architecture pack as Markdown.** The README says
 `docs/` holds the architecture pack. It is six Word files in
-[Skynet_Plus_Final_Architecture_Pack](Skynet_Plus_Final_Architecture_Pack/README.txt),
+[Skynet_Plus_Final_Architecture_Pack](docs/architecture/README.md),
 which a pull request cannot review line by line. *Done when:* each document is a Markdown
 file under `docs/architecture/`, its diagrams kept as text; the README's layout section
 points to it; the Word files are not deleted.

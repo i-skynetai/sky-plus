@@ -144,6 +144,10 @@ class LangGraphRuntime(AgentRuntimeProvider):
             ctx.step("guardrail.input", action=verdict.action, reason=verdict.reason)
             if not verdict.allowed:
                 return {"status": "denied", "error": verdict.reason}
+            if verdict.action == "modify":
+                ctx.task = Task(verdict.content, id=ctx.task.id, metadata=ctx.task.metadata)
+                ctx.step("guardrail.modified", stage="input")
+                return {"task": ctx.task.text}
         return {}
 
     async def _recall(self, state: RunState, config: RunnableConfig) -> dict:
@@ -217,6 +221,9 @@ class LangGraphRuntime(AgentRuntimeProvider):
             ctx.step("guardrail.tool", action=verdict.action, reason=verdict.reason)
             if not verdict.allowed:
                 return {"status": "denied", "error": verdict.reason}
+            if verdict.action == "modify" and isinstance(verdict.content, dict):
+                proposal = {**proposal, "args": dict(verdict.content.get("args", verdict.content))}
+                ctx.step("guardrail.modified", stage="tool", args=proposal["args"])
         auth = ctx.services.get("authorization")
         if auth:
             decision = await auth.authorize(proposal["tool"], {"agent": ctx.spec.name, "task": ctx.task.id,
@@ -226,7 +233,7 @@ class LangGraphRuntime(AgentRuntimeProvider):
                 return {"status": "needs_approval", "error": decision.reason}
             if decision.decision == "deny":
                 return {"status": "denied", "error": decision.reason}
-        return {}
+        return {"proposal": proposal}
 
     async def _act(self, state: RunState, config: RunnableConfig) -> dict:
         ctx = self._ctx(config)
@@ -257,6 +264,9 @@ class LangGraphRuntime(AgentRuntimeProvider):
             ctx.step("guardrail.output", action=verdict.action, reason=verdict.reason)
             if not verdict.allowed:
                 return {"status": "denied", "error": verdict.reason}
+            if verdict.action == "modify":
+                answer = verdict.content
+                ctx.step("guardrail.modified", stage="output")
         memory = ctx.services.get("memory")
         if memory:
             await memory.remember(MemoryItem(f"{ctx.task.text} -> {answer}", scope={"agent": ctx.spec.name}))

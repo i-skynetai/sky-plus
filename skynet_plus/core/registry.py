@@ -36,6 +36,12 @@ class Registry:
                 obj = ep.load()
                 classes = obj if isinstance(obj, (list, tuple)) else [obj]
                 for c in classes:
+                    key = (c.manifest.capability, c.manifest.id)
+                    if key in self._classes:
+                        self.load_errors.append(
+                            f"{ep.name}: refused — {c.manifest.capability}/{c.manifest.id} already exists "
+                            f"({self._classes[key].__module__}); a plug-in may not replace a provider")
+                        continue
                     self.register(c)
                     loaded.append(c.manifest.ref)
             except Exception as exc:  # noqa: BLE001 — a broken plugin must not break the kernel

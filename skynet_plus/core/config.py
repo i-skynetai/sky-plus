@@ -1,4 +1,9 @@
-"""skynet.yaml: profile + per-capability overrides + requirements, with `${ENV:default}` expansion."""
+"""skynet.yaml: profile + per-capability overrides + requirements, with `${ENV:default}` expansion.
+
+Environment variables the loader honours: `SKYNET_CONFIG` (a config file path, used
+when no path is given), `SKYNET_CONFIG_SEARCH=0` (do not look in parent folders),
+`SKYNET_RUN_LOG` (the run log path when the file does not set one).
+"""
 from __future__ import annotations
 
 import json
@@ -16,7 +21,10 @@ from .profiles import profile as load_profile
 from .provider import CAPABILITIES
 
 CONFIG_NAMES = ("skynet.yaml", "skynet.yml", "skynet.json")
+DEFAULT_RUN_LOG = ".skynet/runs.jsonl"
+TOP_LEVEL_KEYS = ("profile", "requirements", "run_log")
 _ENV = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::([^}]*))?\}")
+_PROVIDER_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 
 
 @dataclass
@@ -24,7 +32,7 @@ class Config:
     profile: str = "local"
     capabilities: dict[str, dict] = field(default_factory=dict)
     requirements: dict[str, dict[str, bool]] = field(default_factory=dict)
-    run_log: str = ".skynet/runs.jsonl"
+    run_log: str = DEFAULT_RUN_LOG           # always absolute after load()
     source: Path | None = None
     raw: dict = field(default_factory=dict)
 
@@ -51,38 +59,67 @@ def expand_env(value: Any) -> Any:
 
 
 def find_config(start: Path | None = None) -> Path | None:
+    """The config file for this folder: `SKYNET_CONFIG`, else here, else the parents up to the
+    repository root (a folder holding `.git`) unless `SKYNET_CONFIG_SEARCH=0`."""
+    explicit = os.environ.get("SKYNET_CONFIG")
+    if explicit:
+        return Path(explicit)
     here = (start or Path.cwd()).resolve()
+    search_up = os.environ.get("SKYNET_CONFIG_SEARCH", "1") != "0"
     for directory in (here, *here.parents):
         for name in CONFIG_NAMES:
             candidate = directory / name
             if candidate.is_file():
                 return candidate
+        if not search_up or (directory / ".git").exists():
+            break
     return None
 
 
-def parse_file(path: Path) -> dict:
-    text = path.read_text()
+def parse_text(text: str, source: Path | None) -> dict:
+    where = str(source) if source else "<config>"
     try:
-        data = json.loads(text) if path.suffix == ".json" else miniyaml.loads(text)
+        data = json.loads(text) if source and source.suffix == ".json" else miniyaml.loads(text)
     except (json.JSONDecodeError, miniyaml.YAMLError) as exc:
-        raise ConfigError(f"{path}: {exc}") from exc
+        raise ConfigError(f"{where}: {exc}") from exc
     if data is None:
         return {}
     if not isinstance(data, dict):
-        raise ConfigError(f"{path}: top level must be a mapping")
+        raise ConfigError(f"{where}: top level must be a mapping")
     return data
 
 
+def parse_file(path: Path) -> dict:
+    return parse_text(path.read_text(), path)
+
+
+def _resolve_run_log(value: str | None, source: Path | None) -> str:
+    chosen = value or os.environ.get("SKYNET_RUN_LOG") or DEFAULT_RUN_LOG
+    path = Path(chosen).expanduser()
+    if not path.is_absolute():
+        base = source.resolve().parent if (source and value) else (source.resolve().parent if source else Path.cwd())
+        path = base / path
+    return str(path)
+
+
 def load(path: str | Path | None = None, profile: str | None = None,
-         overrides: dict | None = None, requirements: dict | None = None) -> Config:
-    """Build the effective configuration: profile defaults ← file ← overrides."""
-    source = Path(path) if path else find_config()
-    raw = parse_file(source) if source else {}
+         overrides: dict | None = None, requirements: dict | None = None,
+         text: str | None = None) -> Config:
+    """Build the effective configuration: profile defaults ← file ← overrides.
+
+    `text` parses that text instead of reading `path` (used to check a file before it is
+    written); `path` is then only the name reported in errors and the base for `run_log`.
+    """
+    source = Path(path) if path else (None if text is not None else find_config())
+    where = str(source) if source else "<config>"
+    raw = parse_text(text, source) if text is not None else (parse_file(source) if source else {})
     name = profile or raw.get("profile") or "local"
+    if not isinstance(name, str):
+        raise ConfigError(f"{where}: profile must be a name")
     try:
         caps = load_profile(name)
     except KeyError as exc:
-        raise ConfigError(str(exc)) from None
+        raise ConfigError(f"{where}: {exc}") from None
 
     for key, value in raw.items():
         if key in CAPABILITIES:
@@ -93,25 +130,44 @@ def load(path: str | Path | None = None, profile: str | None = None,
             elif isinstance(value, str):
                 caps[key] = {"provider": value}          # `model: litellm` shorthand
             else:
-                raise ConfigError(f"{source}: section {key!r} must be a mapping or a provider id")
+                raise ConfigError(f"{where}: section {key!r} must be a mapping or a provider id")
     for key, value in (overrides or {}).items():
         if key in CAPABILITIES:
-            caps.setdefault(key, {}).update(value if isinstance(value, dict) else {"provider": value})
+            if value is None:
+                caps.pop(key, None)
+            else:
+                caps.setdefault(key, {}).update(value if isinstance(value, dict) else {"provider": value})
+        elif key == "run_log":
+            raw = {**raw, "run_log": value}
+        else:
+            raise ConfigError(f"override {key!r} is not a capability; capabilities are {CAPABILITIES}")
 
-    unknown = [k for k in raw if k not in CAPABILITIES and k not in ("profile", "requirements", "run_log")]
+    unknown = [k for k in raw if k not in CAPABILITIES and k not in TOP_LEVEL_KEYS]
     if unknown:
-        raise ConfigError(f"{source}: unknown top-level keys {unknown}; capabilities are {CAPABILITIES}")
+        raise ConfigError(f"{where}: unknown top-level keys {unknown}; capabilities are {CAPABILITIES}")
 
     for cap, section in caps.items():
-        if "provider" not in section:
-            raise ConfigError(f"capability {cap!r} has no provider")
+        pid = section.get("provider")
+        if not isinstance(pid, str) or not _PROVIDER_ID.fullmatch(pid):
+            raise ConfigError(f"{where}: capability {cap!r} needs a provider id made of letters, digits, "
+                              f"'.', '_' or '-'; got {pid!r}")
 
-    reqs = normalise_requirements(raw.get("requirements"))
-    for cap, feats in normalise_requirements(requirements).items():
-        reqs.setdefault(cap, {}).update(feats)
+    try:
+        reqs = normalise_requirements(raw.get("requirements"))
+        for cap, feats in normalise_requirements(requirements).items():
+            reqs.setdefault(cap, {}).update(feats)
+    except ConfigError as exc:
+        raise ConfigError(f"{where}: requirements: {exc}") from None
 
-    return Config(profile=name, capabilities=expand_env(caps), requirements=reqs,
-                  run_log=raw.get("run_log", ".skynet/runs.jsonl"), source=source, raw=deepcopy(raw))
+    run_log_value = raw.get("run_log")
+    if run_log_value is not None and not isinstance(run_log_value, str):
+        raise ConfigError(f"{where}: run_log must be a path")
+    try:
+        caps = expand_env(caps)
+    except ConfigError as exc:
+        raise ConfigError(f"{where}: {exc}") from None
+    return Config(profile=name, capabilities=caps, requirements=reqs,
+                  run_log=_resolve_run_log(run_log_value, source), source=source, raw=deepcopy(raw))
 
 
 def render_default(profile_name: str = "local") -> str:
@@ -125,5 +181,5 @@ def render_default(profile_name: str = "local") -> str:
         else:
             lines.append(f"# {cap}: {{provider: ...}}")
     lines += ["", "# requirements:", "#   streaming: true", "#   human_approval: true",
-              "", "run_log: .skynet/runs.jsonl", ""]
+              "", f"run_log: {DEFAULT_RUN_LOG}", ""]
     return "\n".join(lines)

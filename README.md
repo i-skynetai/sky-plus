@@ -20,6 +20,7 @@ agent = Agent(name="support-agent",
               instructions="Resolve customer support issues.",
               tools=[lookup_order])
 result = await agent.run("Where is order 4412?")
+await agent.close()          # providers stay up between runs until you close them
 ```
 
 ```yaml
@@ -48,10 +49,12 @@ library only, and with LangGraph when its extra is installed:
   before anything is initialised;
 - three profiles (`local`, `development`, `production`) and a `skynet.yaml` loader with
   `${ENV:default}` expansion;
-- an append-only run record the model cannot write to;
+- an append-only, hash-chained run record the model cannot write to; `skynet inspect`
+  rebuilds a run from the lines as written and reports a broken chain;
 - in-memory fake providers for every capability the local profile uses, so a fresh clone
   runs `python examples/hello_agent.py` with no installs and no keys;
-- the `skynet` CLI: `init`, `doctor`, `providers`, `run`, `inspect`, `swap`;
+- the `skynet` CLI: `init`, `doctor`, `providers`, `run`, `inspect`, `eval`, `swap`;
+- conformance checks every provider of a capability must pass (`skynet_plus.conformance`);
 - **the LangGraph agent runtime** (`pip install "skynet-plus[langgraph]"`): a fixed,
   governed graph — guard, recall, plan, govern, act, finish — checkpointed per run. The
   example runs on it with no change to its code and no LangGraph import.
@@ -80,7 +83,7 @@ skynet_plus/
   cli.py       skynet
 recipes/       local · development · production
 examples/      hello_agent.py
-docs/          the architecture pack this implements
+docs/          the architecture pack (docs/architecture), how to write a provider, design notes
 ```
 
 ## Licence

@@ -7,9 +7,13 @@ from __future__ import annotations
 
 import inspect
 import time
+import typing
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable
+
+from .errors import ConfigError
+from .provider import CAPABILITIES
 
 
 def _new_id(prefix: str) -> str:
@@ -44,13 +48,9 @@ class Tool:
                       description: str | None = None) -> "Tool":
         if isinstance(fn, Tool):
             return fn
-        sig = inspect.signature(fn)
-        params = {p.name: (p.annotation.__name__ if hasattr(p.annotation, "__name__") else "any")
-                  for p in sig.parameters.values()
-                  if p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)}
         return cls(name=name or fn.__name__, fn=fn,
                    description=description or (inspect.getdoc(fn) or "").strip(),
-                   parameters=params)
+                   parameters=parameters_schema(fn))
 
     def invoke(self, **kwargs: Any) -> Any:
         sig = inspect.signature(self.fn)
@@ -58,6 +58,57 @@ class Tool:
         if not accepts_any:
             kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
         return self.fn(**kwargs)
+
+
+_JSON_TYPES: dict[Any, str] = {str: "string", int: "integer", float: "number", bool: "boolean",
+                               list: "array", dict: "object", type(None): "null"}
+
+
+def _json_type(annotation: Any) -> dict:
+    if annotation is inspect.Parameter.empty or annotation is Any:
+        return {}
+    origin = typing.get_origin(annotation)
+    if origin is typing.Union or (origin is not None and origin.__name__ == "UnionType"):
+        options = [_json_type(a) for a in typing.get_args(annotation)]
+        return {"anyOf": options} if options else {}
+    if origin in (list, tuple, set, frozenset):
+        args = typing.get_args(annotation)
+        return {"type": "array", **({"items": _json_type(args[0])} if args else {})}
+    if origin is dict:
+        return {"type": "object"}
+    if origin is typing.Literal:
+        return {"enum": list(typing.get_args(annotation))}
+    if annotation in _JSON_TYPES:
+        return {"type": _JSON_TYPES[annotation]}
+    return {}
+
+
+def parameters_schema(fn: Callable[..., Any]) -> dict:
+    """A JSON schema for the function's keyword arguments, from its resolved type hints.
+
+    Works in modules that use postponed annotations (`from __future__ import annotations`);
+    a hint that cannot be resolved becomes an untyped property rather than an error.
+    """
+    sig = inspect.signature(fn)
+    try:
+        hints = typing.get_type_hints(fn)
+    except Exception:  # noqa: BLE001 — unresolvable forward reference
+        hints = {}
+    properties: dict[str, dict] = {}
+    required: list[str] = []
+    for p in sig.parameters.values():
+        if p.kind not in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY):
+            continue
+        prop = dict(_json_type(hints.get(p.name, p.annotation)))
+        if p.default is not inspect.Parameter.empty:
+            prop["default"] = p.default if isinstance(p.default, (str, int, float, bool, type(None))) else repr(p.default)
+        else:
+            required.append(p.name)
+        properties[p.name] = prop
+    schema: dict = {"type": "object", "properties": properties}
+    if required:
+        schema["required"] = required
+    return schema
 
 
 def tool(fn: Callable[..., Any] | None = None, *, name: str | None = None,
@@ -133,8 +184,11 @@ def normalise_requirements(requirements: dict | None) -> dict[str, dict[str, boo
             cap, feature = FLAT_REQUIREMENTS[key]
             out.setdefault(cap, {})[feature] = bool(value)
         else:
-            raise ValueError(f"unknown requirement {key!r}; known flat keys: "
-                             f"{sorted(FLAT_REQUIREMENTS)} or a capability name")
+            raise ConfigError(f"unknown requirement {key!r}; known flags: "
+                              f"{sorted(FLAT_REQUIREMENTS)}, or a capability name with a mapping of features")
+    for cap in out:
+        if cap not in CAPABILITIES:
+            raise ConfigError(f"requirement names unknown capability {cap!r}; capabilities are {CAPABILITIES}")
     return out
 
 

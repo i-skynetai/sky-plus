@@ -100,8 +100,27 @@ class Kernel:
         return resolve(self.registry, self.config.capabilities, reqs, API_VERSION)
 
     # -- lifecycle --------------------------------------------------------------------
+    def unmet(self, requirements: dict | None) -> list[str]:
+        """Features a *running* kernel's providers do not declare, as problem strings."""
+        problems = []
+        for cap, feats in (requirements or {}).items():
+            provider = self.services.get(cap)
+            if provider is None:
+                if any(feats.values()):
+                    problems.append(f"{cap}/-: dependency: required features {sorted(feats)} but no provider is running")
+                continue
+            missing = provider.manifest.missing(feats)
+            if missing:
+                problems.append(f"{cap}/{provider.manifest.id}: missing-feature: required {missing} "
+                                f"but the running provider declares "
+                                f"{sorted(f for f, v in provider.manifest.provides.items() if v)}")
+        return problems
+
     async def start(self, requirements: dict | None = None) -> "Kernel":
         if self._started:
+            unmet = self.unmet(requirements)
+            if unmet:
+                raise ResolutionError(unmet)
             return self
         resolution = self.resolve(requirements)
         if not resolution.ok:
@@ -151,10 +170,19 @@ class Kernel:
     async def doctor(self, requirements: dict | None = None) -> DoctorReport:
         """Report every capability without leaving anything running. Never raises."""
         report = DoctorReport(profile=self.config.profile, registry_errors=list(self.registry.load_errors))
-        resolution = self.resolve(requirements)
-        by_cap = {p.capability: p for p in resolution.problems}
+        try:
+            resolution = self.resolve(requirements)
+        except Exception as exc:  # noqa: BLE001 — doctor reports, it does not raise
+            report.rows.append(DoctorRow("config", "-", "ERROR", f"{type(exc).__name__}: {exc}"))
+            return report
+        by_cap: dict[str, Any] = {}
+        for p in resolution.problems:
+            by_cap.setdefault(p.capability, p)   # the first problem for a capability is the one shown
         status_of = {"missing-provider": "MISSING", "incompatible": "INCOMPATIBLE",
                      "missing-feature": "UNSATISFIED", "dependency": "UNSATISFIED"}
+        for cap in by_cap:                        # a problem on something outside the taxonomy still shows
+            if cap not in CAPABILITIES:
+                report.rows.append(DoctorRow(cap, by_cap[cap].provider, "UNSATISFIED", by_cap[cap].detail))
         for cap in CAPABILITIES:
             pid = self.config.provider_id(cap)
             if cap in by_cap:

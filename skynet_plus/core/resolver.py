@@ -53,7 +53,12 @@ def resolve(registry: Registry, capabilities: dict[str, dict],
                                         f"not installed or not registered; try: {install_hint(cap, pid)}"))
             continue
         m = cls.manifest
-        if not m.compatible_with(api_version):
+        try:
+            compatible = m.compatible_with(api_version)
+        except ValueError as exc:
+            res.problems.append(Problem(cap, pid, "incompatible", f"manifest skynet_api {m.skynet_api!r}: {exc}"))
+            continue
+        if not compatible:
             res.problems.append(Problem(cap, pid, "incompatible",
                                         f"needs skynet_api {m.skynet_api}, this is {api_version}"))
             continue

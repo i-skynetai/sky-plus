@@ -30,16 +30,32 @@ class RulesGuardrail(GuardrailProvider):
         return Health(ok=True, detail=f"{len(self._patterns)} patterns, max {self._max_chars} chars")
 
     async def check(self, content: Any, stage: str, context: dict | None = None) -> Verdict:
-        text = content if isinstance(content, str) else json.dumps(content, default=str)
-        if len(text) > self._max_chars:
-            return Verdict("deny", f"{stage} content is {len(text)} chars, limit {self._max_chars}")
+        size = len(content) if isinstance(content, str) else len(json.dumps(content, default=str))
+        if size > self._max_chars:
+            return Verdict("deny", f"{stage} content is {size} chars, limit {self._max_chars}")
         if stage == "tool" and isinstance(content, dict) and "tool" in content:
             name = content["tool"]
             if name in self._deny_tools:
                 return Verdict("deny", f"tool {name!r} is on the deny list")
             if self._allow_tools is not None and name not in self._allow_tools:
                 return Verdict("deny", f"tool {name!r} is not on the allow list")
-        for pattern in self._patterns:
-            if pattern.search(text):
-                return Verdict("deny", f"{stage} content matches denied pattern {pattern.pattern!r}")
+        for text in _strings(content):            # every string inside, as written — no JSON escaping
+            for pattern in self._patterns:
+                if pattern.search(text):
+                    return Verdict("deny", f"{stage} content matches denied pattern {pattern.pattern!r}")
         return Verdict("allow")
+
+
+def _strings(value: Any):
+    """Yield every string inside a nested structure (dict keys and values, lists, tuples)."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            yield from _strings(k)
+            yield from _strings(v)
+    elif isinstance(value, (list, tuple, set)):
+        for v in value:
+            yield from _strings(v)
+    elif value is not None and not isinstance(value, (int, float, bool)):
+        yield str(value)
