@@ -144,7 +144,7 @@ async def _decision(p: Any, m: Manifest, services: Any) -> list[str]:
 
 async def _guardrail(p: Any, m: Manifest, services: Any) -> list[str]:
     out = []
-    for stage in ("input", "output", "tool"):
+    for stage in ("input", "output", "tool", "tool-result"):
         if not m.provides.get(stage):
             continue
         content: Any = {"tool": "x", "args": {"q": "hello"}} if stage == "tool" else "hello"

@@ -18,7 +18,7 @@ before anything runs if the new provider cannot do what the agent requires.
 | agent-runtime | runs one task for one agent | LangGraph, fake |
 | model | chat completion, structured output, tool calls | LiteLLM (any vendor), fake |
 | memory | remember, recall, forget, scoped per agent/user/run | Mem0, fake |
-| guardrail | check input, tool call and output: allow, deny, modify | rules, fake |
+| guardrail | check the input, each tool call, each tool result, and the output: allow, deny, modify | rules, fake |
 | evaluation | score a run from its record | DeepEval, fake |
 | telemetry | spans and events | OpenTelemetry, fake |
 | decision | fast typed decisions with calibrated confidence | fake (Praxis after 1.0) |
@@ -59,9 +59,12 @@ crosses the interface.
 
 Every run appends JSON lines to `.skynet/runs.jsonl` next to the config file: one line per
 step, one header line at the end. Each line carries the hash of the line before it and its
-own hash. A provider receives a handle that can only append. `skynet inspect` rebuilds a run
-from the lines as written, so clearing anything in memory changes nothing it shows, and
-reports the first line where the chain breaks if the file was edited or cut.
+own hash, and a head file beside the log records the last hash and the line count. A
+provider receives a handle that can only append. `skynet inspect` rebuilds a run from the
+lines as written, so clearing anything in memory changes nothing it shows, and reports an
+edited line, a removed line, or a cut tail. Set `SKYNET_LOG_KEY` and the hashes become
+HMAC-SHA256, which cannot be recomputed without the key. It is tamper-evident, not signed:
+anchoring the head outside the machine is roadmap row SP-044.
 
 ## Where to read next
 

@@ -13,3 +13,4 @@ Skynet_Plus_Final_Architecture_Pack/
 .env
 .env.*
 !.env.example
+.DS_Store

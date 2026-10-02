@@ -15,7 +15,8 @@ from ..spi import GuardrailProvider, Verdict
 
 class RulesGuardrail(GuardrailProvider):
     manifest = Manifest(id="rules", capability="guardrail", version="1.0.0",
-                        provides={"input": True, "output": True, "tool": True, "deterministic": True},
+                        provides={"input": True, "output": True, "tool": True, "tool-result": True,
+                                  "deterministic": True},
                         description="deny patterns, tool allow/deny lists and a size limit; no model")
     DEFAULT_DENY = (r"rm\s+-rf", r"drop\s+table", r"format\s+c:", r"BEGIN (RSA|OPENSSH) PRIVATE KEY")
 

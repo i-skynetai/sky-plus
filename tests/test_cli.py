@@ -59,12 +59,17 @@ class TheCli(unittest.TestCase):
             finally:
                 os.chdir(cwd)
 
-    def test_doctor_on_development_profile_is_not_ready_but_does_not_crash(self):
-        with tempfile.TemporaryDirectory() as d:
+    def test_doctor_on_development_profile_without_a_key_is_not_ready_but_does_not_crash(self):
+        """Without a model key the development profile is never ready: the model row is MISSING
+        (adapter not installed) or DEGRADED (installed, no key). Either way: exit 1, no crash."""
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("OPENAI_API_KEY", None)
             cwd = os.getcwd(); os.chdir(d)
             try:
                 code, out = run("doctor", "--profile", "development", "--json")
                 self.assertEqual(code, 1); self.assertIn('"ok": false', out)
+                self.assertRegex(out, r'"capability": "model",\s*"provider": "[^"]*",\s*"status": "(MISSING|DEGRADED)"')
             finally:
                 os.chdir(cwd)
 

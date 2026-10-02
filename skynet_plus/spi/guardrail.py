@@ -5,7 +5,7 @@ from typing import Any
 
 from ..core.provider import Provider
 
-STAGES = ("input", "output", "tool")
+STAGES = ("input", "tool", "tool-result", "output")
 
 
 @dataclass

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 — unreleased, accepted 2026-09-30
+## 1.0.0 — 2026-10-01
 
 The base product: what an agentic team needs on day one, so it writes only the agent.
 
@@ -35,6 +35,13 @@ The base product: what an agentic team needs on day one, so it writes only the a
   and run in CI. README rewritten for a reader, with an architecture diagram, a terminal
   image, badges, a sixty-second path and a five-minute path; `docs/architecture.md` with
   three rendered diagrams. `.env` files are ignored.
+- **From the release review (2026-10-01).** The development-profile doctor test no longer
+  depends on an ambient `OPENAI_API_KEY`; CI runs every adapter's tests with the
+  `development` extra. A cut log tail is detected through a head file beside the log, and
+  `SKYNET_LOG_KEY` switches the chain to HMAC. Tool results pass the guardrail before they
+  return to the model (`tool-result` stage). An unhealthy provider at start names the fix.
+  `ping: true` on the LiteLLM model makes doctor place one real call. README install
+  steps are true for a clone; a Limits section says what 1.0 does not do.
 - **Not in 1.0, by decision.** The decision capability (Praxis, System-1 routing),
   streaming, resume after human approval, a second runtime, the production profile's
   providers. See `ROADMAP.md`.

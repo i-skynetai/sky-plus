@@ -129,7 +129,7 @@ class LangGraphRuntime(AgentRuntimeProvider):
         g.add_conditional_edges(
             "plan", lambda s: "govern" if (s.get("proposal") or {}).get("action") == "tool" else "finish")
         g.add_conditional_edges("govern", lambda s: "act" if s.get("status") == "running" else END)
-        g.add_conditional_edges("act", lambda s: "plan" if s.get("status") == "running" else "finish")
+        g.add_conditional_edges("act", lambda s: "plan" if s.get("status") == "running" else END)
         g.add_edge("finish", END)
         return g.compile(checkpointer=self._checkpointer)
 
@@ -257,6 +257,16 @@ class LangGraphRuntime(AgentRuntimeProvider):
             ctx.step("tool.failed", tool=tool.name, error=f"{type(exc).__name__}: {exc}")
             return {"status": "error", "error": f"tool {tool.name} failed: {exc}"}
         ctx.step("tool.executed", tool=tool.name, result=result)
+        guard = ctx.services.get("guardrail")
+        if guard:                                            # what a tool returns is untrusted content
+            verdict = await guard.check(result, "tool-result", {"tool": tool.name})
+            ctx.step("guardrail.tool_result", action=verdict.action, reason=verdict.reason)
+            if not verdict.allowed:
+                return {"status": "denied",
+                        "error": f"tool {tool.name} returned content the guardrail denied: {verdict.reason}"}
+            if verdict.action == "modify":
+                result = verdict.content
+                ctx.step("guardrail.modified", stage="tool-result")
         history = list(state.get("history") or [])
         history.append({"tool": tool.name, "args": args, "result": result})
         return {"history": history}

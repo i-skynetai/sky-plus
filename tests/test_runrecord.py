@@ -72,3 +72,42 @@ class TheRunRecordIsAppendOnlyAndChained(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ACutTailIsDetected(unittest.TestCase):
+    def test_cutting_the_last_line_is_reported_through_the_head_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d, "runs.jsonl"); rec = record(p)
+            rec.event("a"); rec.finish(Result("task", "out"))
+            self.assertEqual(verify(p), [])
+            lines = p.read_text().splitlines()
+            p.write_text("\n".join(lines[:-1]) + "\n")
+            problems = verify(p)
+            self.assertTrue(any("tail was cut" in x for x in problems), problems)
+            self.assertEqual(read_runs(p), [])            # the run header is gone ...
+            self.assertTrue(problems)                      # ... and inspect would say why
+
+    def test_a_log_without_a_head_file_says_a_cut_tail_cannot_be_detected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d, "runs.jsonl"); rec = record(p); rec.event("a")
+            Path(d, "runs.jsonl.head").unlink()
+            self.assertTrue(any("no head file" in x for x in verify(p)))
+
+    def test_the_head_file_survives_a_second_recorder(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d, "runs.jsonl")
+            r1 = record(p, "r1"); r1.event("a"); r1.finish(Result("t", 1))
+            r2 = record(p, "r2"); r2.event("b"); r2.finish(Result("t", 2))
+            self.assertEqual(verify(p), [])
+            self.assertEqual(json.loads(Path(d, "runs.jsonl.head").read_text())["lines"], 4)
+
+
+class AKeyedChainCannotBeRecomputedWithoutTheKey(unittest.TestCase):
+    def test_hmac_when_the_key_is_set(self):
+        import os
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"SKYNET_LOG_KEY": "secret"}):
+            p = Path(d, "runs.jsonl"); rec = record(p); rec.event("a"); rec.finish(Result("t", 1))
+            self.assertEqual(verify(p), [])
+            os.environ.pop("SKYNET_LOG_KEY")
+            self.assertTrue(any("hash mismatch" in x for x in verify(p)))   # without the key, nothing checks out

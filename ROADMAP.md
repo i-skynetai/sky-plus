@@ -15,7 +15,7 @@ on this list.
 ## Where we are — read this first
 
 **The 1.0 base product is complete and accepted (2026-09-30).** Every row in the *1.0*
-section is done and tested: 103 tests, offline by design, on Python 3.11 to 3.14 with and
+section is done and tested: 116 tests, offline by design, on Python 3.11 to 3.14 with and
 without the adapters. The decision capability (Praxis, System-1 routing) was deliberately
 left out of 1.0 and is the first item after it. What remains before the `v1.0.0` tag is
 one check only the maintainer can do: a live run on a real model with a real key. The
@@ -106,6 +106,8 @@ record it can trust. Nothing provider-specific in the application's code.
 | SP-050 | [The production profile's providers](#sp-050) | providers | P2 | L | Ready | |
 | SP-051 | [Streaming](#sp-051) | sdk | P2 | M | Proposed | |
 | SP-052 | [A second agent runtime, swapped by config](#sp-052) | providers | P3 | L | Needs decision | |
+| SP-043 | [Understand tool output, not only match it](#sp-043) | guardrail | P2 | M | Proposed | |
+| SP-044 | [Anchor the run log outside the machine](#sp-044) | run record | P2 | M | Proposed | |
 
 ## Details
 
@@ -367,6 +369,22 @@ PydanticAI. *Done when:* the reference agent runs on both with no code change, a
 `skynet swap agent-runtime …` refuses a switch that loses a required feature.
 *Depends on:* SP-022, SP-040.
 
+<a id="sp-043"></a>**SP-043 — Understand tool output, not only match it.** Since 1.0 every tool
+result passes the guardrail (`tool-result` stage) before it returns to the model, but the
+built-in rules only match patterns; an instruction hidden in a web page or a file that
+matches no pattern still reaches the model. *Done when:* a semantic guardrail provider
+(a classifier or a System-1 decision) screens tool results for instructions aimed at the
+agent, and the conformance suite has a case for it. *Depends on:* SP-031 for the
+System-1 option.
+
+<a id="sp-044"></a>**SP-044 — Anchor the run log outside the machine.** The log is
+tamper-evident: an edited or removed line and a cut tail are reported, and with
+`SKYNET_LOG_KEY` the chain needs the key to recompute. Someone with the key and write
+access can still rewrite history. *Decision needed:* where to anchor the head hash — a
+remote append-only store, a signed timestamp, or the telemetry backend — and how
+`inspect` compares against it. *Done when:* a rewritten log is reported even by someone
+holding the key.
+
 ### Project and contributors
 
 <a id="sp-060"></a>**SP-060 — The architecture pack as Markdown.** The README says
@@ -388,3 +406,11 @@ outside a temporary folder and ignores config files above it; CI also runs Pytho
 says Apache 2.0, but there is no `LICENSE` file; there is no contributing guide; and the
 project has no commits in any repository yet. The claim process above needs all three.
 A maintainer decision.
+
+## Release review — 2026-10-01
+
+| ID | Feature | Area | P | Size | Status | Owner |
+|---|---|---|---|---|---|---|
+| SP-900 | Make development-profile doctor test independent of ambient setup | release | P0 | S | Done (1.0) | maintainer |
+
+**Verified:** Reproduced on 2026-10-01: all 110 tests execute with installed providers, but test_doctor_on_development_profile_is_not_ready_but_does_not_crash expects exit 1 and receives 0. Control the relevant environment/provider health in the test; retain separate ready and not-ready cases. Run core and installed-provider suites. Do not weaken doctor to satisfy an environment-dependent assertion.

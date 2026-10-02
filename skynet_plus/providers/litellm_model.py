@@ -66,7 +66,17 @@ class LiteLLMModel(ModelProvider):
         if missing and not self.options.get("mock_response"):
             return Health(ok=False, detail=f"model {self.model}: missing {', '.join(missing)} in the environment",
                           checks={"missing_keys": missing})
-        return Health(ok=True, detail=f"model {self.model}; keys present", checks={"model": self.model})
+        if self.config.get("ping"):
+            try:
+                options = {k: v for k, v in self.options.items() if k != "mock_response"}
+                await litellm.acompletion(model=self.model, messages=[{"role": "user", "content": "ping"}],
+                                          max_tokens=1, **options)
+            except Exception as exc:  # noqa: BLE001
+                return Health(ok=False, detail=f"model {self.model}: a test call failed: "
+                                               f"{type(exc).__name__}: {str(exc)[:160]}")
+            return Health(ok=True, detail=f"model {self.model}; a test call succeeded", checks={"model": self.model})
+        return Health(ok=True, detail=f"model {self.model}; keys present (not tested against the provider; "
+                                      "set `ping: true` to make one call)", checks={"model": self.model})
 
     def _structured_kwargs(self, schema: dict, messages: list[dict]) -> tuple[dict, list[dict]]:
         mode = self.structured_mode

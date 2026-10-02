@@ -53,10 +53,12 @@ python examples/hello_agent.py
 
 ## Use it in your own project, five steps
 
-**1. Install the real stack** (a virtual environment with Python 3.11 or newer):
+**1. Install the real stack** from the clone, in a virtual environment with Python 3.11
+or newer (the package is not on PyPI yet):
 
 ```bash
-pip install "skynet-plus[development]"
+cd skynet-plus
+pip install -e ".[development]"
 ```
 
 **2. Create the config file** in your project folder:
@@ -80,9 +82,13 @@ telemetry:     {provider: opentelemetry}
 **3. Check the stack before you write any code:**
 
 ```bash
-export OPENAI_API_KEY=...     # or point `model:` at any provider LiteLLM supports
+export OPENAI_API_KEY=...     # the model, and Mem0's own extraction and embeddings, use it
 skynet doctor
 ```
+
+To use another model provider, change the `model:` line to any model LiteLLM supports and
+set that provider's key. Mem0 still needs `OPENAI_API_KEY` unless you give it its own
+`config:` block (see [docs/providers.md](docs/providers.md)).
 
 `doctor` prints one row per provider. Without a key it says exactly which variable is
 missing; with one, every row reads `OK`.
@@ -130,13 +136,31 @@ cannot edit.
   vLLM and more.
 - **Memory** per agent and per user, through Mem0. If memory fails, the run still
   finishes; the failure is logged.
-- **Safety rules** on the input, on every tool call, and on the output. Deny, or
-  rewrite in place.
+- **Safety rules** on the input, on every tool call, on what the tool returns, and on
+  the output. The built-in rules deny; a guardrail you write can also rewrite content
+  in place, and both runtimes honour that.
 - **Scores** for each run through DeepEval.
 - **A trace** per run through OpenTelemetry: one span per provider call and per tool.
-- **A log you can trust.** Each line carries the hash of the line before it. If anyone
-  edits or deletes a line, `skynet inspect` says where.
+- **A tamper-evident log.** Each line carries the hash of the line before it, and a
+  head file records the last one. An edited line, a removed line or a cut tail makes
+  `skynet inspect` say so. Set `SKYNET_LOG_KEY` and the hashes need the key to recompute.
 - **A doctor** that checks everything before the first call and names the fix.
+
+## Limits, today
+
+- **A run that needs a human stops; nothing resumes it yet.** The status and the
+  checkpoint are kept; the resume call is roadmap row SP-025.
+- **No streaming.** `run()` returns when the run ends (SP-051).
+- **One runtime.** LangGraph is the only real agent runtime; the promise that a runtime
+  swaps by config is proven only when a second one exists (SP-052).
+- **Mem0 needs an OpenAI key** for extraction and embeddings, whatever model you chat
+  with, unless you pass it its own `config:` block.
+- **The log is tamper-evident, not signed.** With `SKYNET_LOG_KEY` the chain cannot be
+  recomputed without the key; without it, someone with write access to both files can
+  rewrite the log. Anchoring the head elsewhere is roadmap row SP-044.
+- **Tool output is screened by the rules, not understood.** A prompt injection that
+  matches no pattern reaches the model (SP-043).
+- **No fast-decision layer yet** (Praxis, SP-031).
 
 ## What it is not
 
@@ -145,7 +169,7 @@ Claude Code or Codex. Not a model.
 
 ## Status
 
-Version 1.0.0. 110 tests on Python 3.11 to 3.14, lint and type checks in CI. The next
+Version 1.0.0. 116 tests on Python 3.11 to 3.14, lint and type checks in CI. The next
 item on the [roadmap](ROADMAP.md) is a fast-decision layer through
 [Praxis](https://github.com/arupmmi07/praxis); everything after that is listed there by ID.
 

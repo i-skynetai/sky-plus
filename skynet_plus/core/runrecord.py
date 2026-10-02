@@ -1,13 +1,17 @@
 """The run record: append-only JSON lines, hash-chained, kernel-owned.
 
 A provider receives a handle that can only append an event. Every line on disk carries
-the hash of the line before it and its own hash, so `skynet inspect` rebuilds a run from
-the lines as they were written and reports where a chain is broken. Inside one process
-nothing can be made impossible; this makes tampering visible, which is the promise.
+the hash of the line before it and its own hash, and a small head file beside the log
+records the last hash and the line count, so `skynet inspect` reports an edited line, a
+removed line, and a cut tail. The hashes are plain SHA-256 unless `SKYNET_LOG_KEY` is set,
+in which case they are HMAC-SHA256 and cannot be recomputed without the key. Inside one
+process nothing can be made impossible; this makes tampering visible, which is the
+promise. It is not a signed, externally anchored log (see the roadmap).
 """
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import time
@@ -31,8 +35,22 @@ def _json_safe(value: Any) -> Any:
 
 
 def _digest(line: dict) -> str:
-    body = {k: v for k, v in line.items() if k != "hash"}
-    return hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+    body = json.dumps({k: v for k, v in line.items() if k != "hash"}, sort_keys=True, default=str).encode()
+    key = os.environ.get("SKYNET_LOG_KEY")
+    if key:
+        return hmac.new(key.encode(), body, hashlib.sha256).hexdigest()
+    return hashlib.sha256(body).hexdigest()
+
+
+def head_path(path: Path) -> Path:
+    return path.with_name(path.name + ".head")
+
+
+def _read_head(path: Path) -> dict | None:
+    try:
+        return json.loads(head_path(path).read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 @dataclass
@@ -98,9 +116,12 @@ class Recorder:
         self.path = path
         self.handle = RecorderHandle(self._event, record.run_id)
         self._prev = ""
+        self._lines = 0
         if path is not None:
             path.parent.mkdir(parents=True, exist_ok=True)
             self._prev = _last_hash(path)
+            head = _read_head(path)
+            self._lines = int(head.get("lines", 0)) if head else sum(1 for line in read_lines(path))
 
     def event(self, name: str, **data: Any) -> None:
         self._event(name, data)
@@ -124,6 +145,8 @@ class Recorder:
             with self.path.open("a") as fh:
                 fh.write(json.dumps(line, sort_keys=True) + "\n")
             self._prev = line["hash"]
+            self._lines += 1
+            head_path(self.path).write_text(json.dumps({"hash": self._prev, "lines": self._lines}))
         except OSError:
             pass   # recording must never fail the run; the in-memory record still exists
 
@@ -152,7 +175,17 @@ def verify(path: Path) -> list[str]:
     """Problems with the chain, in order. Empty means every line is as it was written."""
     problems = []
     prev = ""
-    for n, line in enumerate(read_lines(path), start=1):
+    lines = read_lines(path)
+    head = _read_head(path)
+    if head is not None:
+        if len(lines) < int(head.get("lines", 0)):
+            problems.append(f"log ends at line {len(lines)} but the head file records {head['lines']} lines "
+                            f"— the tail was cut")
+        elif lines and lines[-1].get("hash") != head.get("hash"):
+            problems.append(f"line {len(lines)}: the last line is not the one the head file records")
+    elif lines:
+        problems.append("no head file beside the log — a cut tail cannot be detected")
+    for n, line in enumerate(lines, start=1):
         if line.get("kind") == "corrupt":
             problems.append(f"line {n}: not JSON")
             prev = ""

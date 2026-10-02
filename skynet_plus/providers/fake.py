@@ -170,7 +170,7 @@ class FakeDecision(DecisionProvider):
 
 class FakeGuardrail(GuardrailProvider):
     manifest = Manifest(id="fake", capability="guardrail", version=VERSION,
-                        provides={"input": True, "output": True, "tool": True},
+                        provides={"input": True, "output": True, "tool": True, "tool-result": True},
                         description="denies content matching configured patterns")
     DEFAULT_DENY = ("rm -rf", "drop table", "format c:")
 
@@ -311,6 +311,15 @@ class FakeAgentRuntime(AgentRuntimeProvider):
                 step("tool.failed", tool=chosen.name, error=f"{type(exc).__name__}: {exc}")
                 return Result(task.id, None, status="error", steps=steps, served_by=served,
                               error=f"tool {chosen.name} failed: {exc}")
+            if guardrail:                                   # what a tool returns is untrusted content
+                verdict = await guardrail.check(tool_result, "tool-result", {"tool": chosen.name})
+                step("guardrail.tool_result", action=verdict.action, reason=verdict.reason)
+                if not verdict.allowed:
+                    return Result(task.id, None, status="denied", steps=steps, served_by=served,
+                                  error=f"tool {chosen.name} returned content the guardrail denied: {verdict.reason}")
+                if verdict.action == "modify":
+                    tool_result = verdict.content
+                    step("guardrail.modified", stage="tool-result")
 
         messages = [{"role": "system", "content": spec.instructions}]
         if context:

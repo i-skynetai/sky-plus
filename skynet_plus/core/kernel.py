@@ -175,7 +175,8 @@ class Kernel:
                 except Exception as exc:  # noqa: BLE001
                     raise ProviderError(f"{b.capability}/{b.manifest.ref} failed to start: {exc}") from exc
                 if not health.ok:
-                    raise ProviderError(f"{b.capability}/{b.manifest.ref} unhealthy: {health.detail}")
+                    raise ProviderError(f"{b.capability}/{b.manifest.ref} is not ready: {health.detail}. "
+                                        "Run `skynet doctor` for the full table.")
                 providers[b.capability] = instance
                 self.events.emit("provider.started", capability=b.capability, provider=b.manifest.ref)
         except Exception:

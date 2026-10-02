@@ -12,15 +12,19 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests -v
-  langgraph:
+  adapters:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[langgraph]"
+      - run: pip install -e ".[development]"
       - run: python -m unittest discover -s tests -v
+        env:
+          LITELLM_LOCAL_MODEL_COST_MAP: "True"
+          DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+          MEM0_TELEMETRY: "False"
   lint:
     runs-on: ubuntu-latest
     steps:
