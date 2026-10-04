@@ -1,6 +1,6 @@
 # Skynet+
 
-[![tests](https://github.com/arupmmi07/skynet-plus/actions/workflows/tests.yml/badge.svg)](https://github.com/arupmmi07/skynet-plus/actions/workflows/tests.yml)
+[![tests](https://github.com/i-skynetai/sky-plus/actions/workflows/tests.yml/badge.svg)](https://github.com/i-skynetai/sky-plus/actions/workflows/tests.yml)
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://www.python.org/downloads/)
 [![licence](https://img.shields.io/badge/licence-Apache%202.0-blue)](LICENSE)
 
@@ -44,7 +44,7 @@ instructions, the task and the tool result. Everything else is real: the loop, t
 safety rules, the scoring, the log.
 
 ```bash
-git clone https://github.com/arupmmi07/skynet-plus.git
+git clone https://github.com/i-skynetai/sky-plus.git
 cd skynet-plus
 python examples/hello_agent.py
 ```
@@ -171,7 +171,7 @@ Claude Code or Codex. Not a model.
 
 Version 1.0.0. 116 tests on Python 3.11 to 3.14, lint and type checks in CI. The next
 item on the [roadmap](ROADMAP.md) is a fast-decision layer through
-[Praxis](https://github.com/arupmmi07/praxis); everything after that is listed there by ID.
+[Praxis](https://github.com/i-skynetai/praxis); everything after that is listed there by ID.
 
 ## Read more
 
