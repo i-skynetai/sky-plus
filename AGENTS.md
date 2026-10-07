@@ -32,6 +32,16 @@ Local test success does not prove hosted CI or a fresh install. Record skipped t
 optional-provider checks and live checks separately. Review work never implies permission
 to publish. Only Codex pushes: Claude Code must never run git push (a pre-push hook and Claude settings refuse it) and instead sends Codex a push request through agent-bridge. Codex may push projects under projects/ from this laptop to their verified connected GitHub repositories. Keep private plans, career records, credentials and employer material private. This does not authorise publishing the career-plan root, force-pushing or deleting remote branches.
 
+## Automatic commits and pushes — approved 2026-10-05
+
+The maintainer approved these standing rules on 2026-10-05:
+
+- Codex commits and pushes automatically, without per-commit or per-push approval.
+- Claude Code never pushes; it asks Codex.
+- Before each push, verify the remote, run the checks, exclude secrets and private
+  material, and coordinate with the active owner.
+- No force-push and no remote branch deletion.
+
 ## Documentation
 
 Follow this README order: title/tagline and tests/Python/licence badges; plain description;
