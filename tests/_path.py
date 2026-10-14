@@ -6,7 +6,14 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _scratch = tempfile.TemporaryDirectory(prefix="skynet-tests-")
-atexit.register(_scratch.cleanup)
+
+
+def _cleanup():
+    os.chdir(tempfile.gettempdir())     # Windows will not remove the folder the process stands in
+    _scratch.cleanup()
+
+
+atexit.register(_cleanup)
 os.environ.setdefault("SKYNET_RUN_LOG", os.path.join(_scratch.name, "runs.jsonl"))
 os.environ.setdefault("SKYNET_CONFIG_SEARCH", "0")
 os.environ.pop("SKYNET_CONFIG", None)

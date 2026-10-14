@@ -177,7 +177,7 @@ class TheMem0Memory(unittest.TestCase):
     def test_defaults_use_a_model_that_accepts_temperature_and_a_project_local_store(self):
         m = self.cls({"__skynet__": {"config_dir": "/proj", "run_log": "/proj/.skynet/runs.jsonl", "profile": "development"}})
         self.assertEqual(m.mem0_config["llm"]["config"]["model"], "gpt-4o-mini")
-        self.assertEqual(m.mem0_config["vector_store"]["config"]["path"], "/proj/.skynet/mem0")
+        self.assertEqual(m.mem0_config["vector_store"]["config"]["path"], os.path.normpath("/proj/.skynet/mem0"))
         self.assertEqual(self.cls({"llm_model": "gpt-4.1-mini"}).mem0_config["llm"]["config"]["model"], "gpt-4.1-mini")
         self.assertEqual(self.cls({"config": {"llm": {"provider": "ollama"}}}).mem0_config, {"llm": {"provider": "ollama"}})
 

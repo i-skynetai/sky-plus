@@ -414,3 +414,25 @@ A maintainer decision.
 | SP-900 | Make development-profile doctor test independent of ambient setup | release | P0 | S | Done (1.0) | maintainer |
 
 **Verified:** Reproduced on 2026-10-01: all 110 tests execute with installed providers, but test_doctor_on_development_profile_is_not_ready_but_does_not_crash expects exit 1 and receives 0. Control the relevant environment/provider health in the test; retain separate ready and not-ready cases. Run core and installed-provider suites. Do not weaken doctor to satisfy an environment-dependent assertion.
+
+## Windows check — 2026-10-14
+
+| ID | Feature | Area | P | Size | Status | Owner |
+|---|---|---|---|---|---|---|
+| SP-901 | Test suite passes on Windows | release | P1 | S | Done (1.0.0) | maintainer, 2026-10-14 |
+| SP-902 | CI runs the suite on Windows and macOS | release | P2 | S | Proposed | — |
+
+**SP-901 — Verified:** On Windows 11 with Python 3.12 and every adapter installed, one
+test failed and the suite printed a `PermissionError` at exit. The Mem0 test expected
+`/proj/.skynet/mem0`, but the provider builds the path with `Path`, which gives
+backslashes on Windows; the test now expects the platform's own form. The test setup
+removed its temporary folder while still standing in it, which Windows refuses; it now
+leaves the folder first. All 116 tests pass with nothing skipped; ruff and mypy are clean.
+*Starts in:* `tests/_path.py`, `tests/test_adapters.py`.
+
+Included in 1.0.0 before its release tag: these fixes change tests only; the package
+version remains 1.0.0.
+
+**SP-902 — CI on every platform.** CI runs on Linux only, so both SP-901 failures went
+unseen. *Done when:* the test job also runs on `windows-latest` and `macos-latest`.
+*Starts in:* [the CI workflow](.github/workflows/tests.yml).
